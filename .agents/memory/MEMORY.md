@@ -1,0 +1,5 @@
+- [Clerk version pinning](clerk-versions.md) — @clerk/react and @clerk/shared must be updated together; @clerk/react@5.54+ needs @clerk/shared@4.x exports
+- [Dev proxy pattern](dev-proxy.md) — API server (port 8080→80) must proxy non-API requests to Vite (port 20686) for preview pane to work
+- [Design subagent backtick bug](backtick-bug.md) — design subagent writes escaped backticks in JSX; use python3 binary replace script to fix
+- [Generated hook naming](orval-hooks.md) — orval generates hooks matching route prefix: admin routes become useAdminGet*, not useGetAdmin*; biography mutation is useGenerateBiographyEntry
+- [Custom hooks pattern](custom-hooks.md) — new API endpoints not in orval spec go in src/hooks/ with credentials:"include" fetch; no Authorization header needed for web (cookie-based Clerk auth)

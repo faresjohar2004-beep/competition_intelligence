@@ -1,0 +1,217 @@
+import { Router } from "express";
+import { db, usersTable, actionsTable, missionsTable, milestonesTable } from "@workspace/db";
+import { eq, sql, count } from "drizzle-orm";
+import { requireAuthWithUser } from "../lib/auth";
+import { generateDailyMissions } from "../lib/ai";
+
+const router = Router();
+
+// GET /api/missions — get today's missions (generate if needed)
+router.get("/", requireAuthWithUser, async (req, res) => {
+  const user = (req as any).user;
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  const [existing] = await db
+    .select()
+    .from(missionsTable)
+    .where(sql`${missionsTable.userId} = ${user.id} AND ${missionsTable.date} = ${todayStr}`);
+
+  if (existing) {
+    res.json(existing);
+    return;
+  }
+
+  // Gather context for AI generation
+  const recentActions = await db
+    .select({ type: actionsTable.type })
+    .from(actionsTable)
+    .where(sql`${actionsTable.userId} = ${user.id} AND ${actionsTable.completedAt} > NOW() - INTERVAL '7 days'`)
+    .limit(20);
+
+  const actionTypes = recentActions.map((a) => a.type);
+  const missions = await generateDailyMissions(user.name, actionTypes, user.streakDays);
+
+  const [created] = await db
+    .insert(missionsTable)
+    .values({
+      userId: user.id,
+      date: todayStr,
+      criticalMission: missions.critical,
+      secondaryMission1: missions.secondary[0],
+      secondaryMission2: missions.secondary[1],
+      secondaryMission3: missions.secondary[2],
+      courageChallenge: missions.courage,
+    })
+    .returning();
+
+  res.json(created);
+});
+
+// POST /api/missions/complete — mark a mission slot as completed
+router.post("/complete", requireAuthWithUser, async (req, res) => {
+  const user = (req as any).user;
+  const { slot } = req.body as { slot: "critical" | "secondary1" | "secondary2" | "secondary3" | "courage" };
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  const fieldMap: Record<string, any> = {
+    critical: { criticalCompleted: true },
+    secondary1: { secondary1Completed: true },
+    secondary2: { secondary2Completed: true },
+    secondary3: { secondary3Completed: true },
+    courage: { courageCompleted: true },
+  };
+
+  if (!fieldMap[slot]) {
+    res.status(400).json({ error: "Invalid slot" });
+    return;
+  }
+
+  const [updated] = await db
+    .update(missionsTable)
+    .set(fieldMap[slot])
+    .where(sql`${missionsTable.userId} = ${user.id} AND ${missionsTable.date} = ${todayStr}`)
+    .returning();
+
+  res.json(updated);
+});
+
+// GET /api/missions/alignment — alignment score + top action
+router.get("/alignment", requireAuthWithUser, async (req, res) => {
+  const user = (req as any).user;
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  // Get today's actions
+  const todayActions = await db
+    .select()
+    .from(actionsTable)
+    .where(sql`${actionsTable.userId} = ${user.id} AND DATE(${actionsTable.completedAt}) = ${todayStr}`);
+
+  // Get total actions for milestone checks
+  const [totalResult] = await db
+    .select({ count: count() })
+    .from(actionsTable)
+    .where(eq(actionsTable.userId, user.id));
+
+  const totalActions = Number(totalResult?.count || 0);
+  const todayCount = todayActions.length;
+
+  // Compute alignment score (0-100) from streak + today actions + overall score
+  const streakBonus = Math.min(30, user.streakDays * 2);
+  const todayBonus = Math.min(30, todayCount * 6);
+  const baseScore = 20 + streakBonus + todayBonus;
+  const alignmentScore = Math.min(99, Math.round(baseScore));
+
+  // Determine top action recommendation
+  const completedTypes = new Set(todayActions.map((a) => a.type));
+  const allTypes = ["workout", "deep_work", "reading", "meditation", "saving", "learning", "content_creation", "sleep", "water"];
+  const missing = allTypes.filter((t) => !completedTypes.has(t));
+  const topAction = missing[0] ?? "Reflect on your progress and set tomorrow's intention";
+
+  // Check and award milestones
+  const earned: string[] = [];
+
+  const milestoneChecks = [
+    { key: "first_action", title: "First Step", description: "Logged your first action", icon: "🌱", category: "actions", threshold: 1 },
+    { key: "10_actions", title: "Building Momentum", description: "Logged 10 actions", icon: "⚡", category: "actions", threshold: 10 },
+    { key: "50_actions", title: "Half Century", description: "Logged 50 actions", icon: "🔥", category: "actions", threshold: 50 },
+    { key: "100_actions", title: "Century Club", description: "Logged 100 actions", icon: "💯", category: "actions", threshold: 100 },
+    { key: "7_streak", title: "Week Warrior", description: "7-day streak", icon: "🗡️", category: "streak", threshold: 7 },
+    { key: "30_streak", title: "Month Master", description: "30-day streak", icon: "🏆", category: "streak", threshold: 30 },
+    { key: "90_streak", title: "90-Day Legend", description: "90-day streak", icon: "👑", category: "streak", threshold: 90 },
+  ];
+
+  for (const m of milestoneChecks) {
+    const [existing] = await db
+      .select()
+      .from(milestonesTable)
+      .where(sql`${milestonesTable.userId} = ${user.id} AND ${milestonesTable.key} = ${m.key}`);
+
+    if (!existing) {
+      const value = m.category === "streak" ? user.streakDays : totalActions;
+      if (value >= m.threshold) {
+        await db.insert(milestonesTable).values({
+          userId: user.id,
+          key: m.key,
+          title: m.title,
+          description: m.description,
+          icon: m.icon,
+          category: m.category,
+        });
+        earned.push(m.key);
+      }
+    }
+  }
+
+  res.json({
+    alignmentScore,
+    topAction,
+    todayActionsCount: todayCount,
+    totalActions,
+    newMilestonesEarned: earned,
+  });
+});
+
+// GET /api/missions/milestones — Hall of Legends
+router.get("/milestones", requireAuthWithUser, async (req, res) => {
+  const user = (req as any).user;
+  const milestones = await db
+    .select()
+    .from(milestonesTable)
+    .where(eq(milestonesTable.userId, user.id))
+    .orderBy(sql`${milestonesTable.earnedAt} DESC`);
+
+  res.json(milestones.map((m) => ({ ...m, earnedAt: m.earnedAt.toISOString() })));
+});
+
+// GET /api/missions/regret — Hall of Regret (computed missed opportunities)
+router.get("/regret", requireAuthWithUser, async (req, res) => {
+  const user = (req as any).user;
+
+  // Look at last 30 days to find gaps
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
+  const actions = await db
+    .select({ type: actionsTable.type, completedAt: actionsTable.completedAt })
+    .from(actionsTable)
+    .where(sql`${actionsTable.userId} = ${user.id} AND DATE(${actionsTable.completedAt}) >= ${thirtyDaysAgo}`)
+    .orderBy(sql`${actionsTable.completedAt} DESC`);
+
+  // Count by type
+  const typeCounts: Record<string, number> = {};
+  for (const a of actions) {
+    typeCounts[a.type] = (typeCounts[a.type] || 0) + 1;
+  }
+
+  // Total possible = 30 per type
+  const allTypes = [
+    { type: "workout", label: "Workouts", impact: "fitness" },
+    { type: "deep_work", label: "Deep Work Sessions", impact: "productivity" },
+    { type: "reading", label: "Reading Sessions", impact: "knowledge" },
+    { type: "meditation", label: "Meditation Sessions", impact: "mental clarity" },
+    { type: "saving", label: "Saving Habits", impact: "wealth" },
+  ];
+
+  const regrets = allTypes
+    .map((t) => {
+      const done = typeCounts[t.type] || 0;
+      const missed = 30 - done;
+      const missedPct = Math.round((missed / 30) * 100);
+      const potentialGain = Math.round(missed * 1.8);
+      return {
+        type: t.type,
+        label: t.label,
+        impact: t.impact,
+        doneCount: done,
+        missedCount: missed,
+        missedPercentage: missedPct,
+        potentialScoreGain: potentialGain,
+        message: `If you had completed ${missed} more ${t.label.toLowerCase()} in the last 30 days, your ${t.impact} score could be ${potentialGain}% higher.`,
+      };
+    })
+    .filter((r) => r.missedCount > 0)
+    .sort((a, b) => b.potentialScoreGain - a.potentialScoreGain)
+    .slice(0, 4);
+
+  res.json(regrets);
+});
+
+export default router;

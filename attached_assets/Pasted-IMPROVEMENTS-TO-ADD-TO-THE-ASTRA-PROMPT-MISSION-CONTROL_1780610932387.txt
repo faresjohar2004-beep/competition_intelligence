@@ -1,0 +1,168 @@
+IMPROVEMENTS TO ADD TO THE ASTRA PROMPT
+
+MISSION CONTROL SYSTEM
+
+The AI should not only track actions.
+
+It should decide what the user should do next.
+
+Every morning the AI generates:
+
+* One Critical Mission
+* Three Secondary Missions
+* One Courage Challenge
+
+The Courage Challenge should push users outside their comfort zone.
+
+Examples:
+
+* Start a conversation with a stranger
+* Publish a piece of content
+* Make a sales call
+* Wake up 30 minutes earlier
+
+The AI adapts based on previous performance.
+
+⸻
+
+REAL CONSEQUENCES SYSTEM
+
+Most self-improvement apps only reward users.
+
+ASTRA should create consequences.
+
+Users choose a consequence during onboarding.
+
+Examples:
+
+* Donate $5 to a cause
+* Lose a streak shield
+* Miss XP opportunities
+* Lose access to premium simulations for 24 hours
+
+This creates accountability.
+
+⸻
+
+FUTURE SELF VIDEO MESSAGES
+
+Generate cinematic AI messages from the user’s future self.
+
+Example:
+
+“Faris, I remember this week. This is where most people quit. Don’t.”
+
+These should feel emotional and highly shareable.
+
+⸻
+
+LIFE DECISION SIMULATOR
+
+Users can ask:
+
+“What happens if I stay consistent for 6 months?”
+
+“What happens if I stop creating content?”
+
+“What happens if I save 20% of my income?”
+
+The AI generates a visual simulation of possible outcomes.
+
+⸻
+
+THE HALL OF REGRET
+
+A unique feature.
+
+The AI shows:
+
+Potential Opportunities Missed
+
+Example:
+
+“If you had continued training consistently for the last 90 days, your projected fitness score would be 18% higher.”
+
+This creates emotional motivation.
+
+⸻
+
+THE HALL OF LEGENDS
+
+Display major milestones.
+
+Examples:
+
+First Workout
+
+30-Day Streak
+
+First Business Launch
+
+100 Pieces of Content Published
+
+The app should feel like the user is building a legacy.
+
+⸻
+
+AI LIFE OPERATING SYSTEM
+
+Instead of separate sections for fitness, business, learning, and discipline:
+
+The AI combines all areas.
+
+Every day it asks:
+
+“What is the highest-leverage action for this person today?”
+
+Then prioritizes that action.
+
+This becomes the core of the app.
+
+⸻
+
+PERSONAL EVOLUTION MAP
+
+Create a visual map showing growth.
+
+Nodes include:
+
+* Discipline
+* Fitness
+* Wealth
+* Knowledge
+* Confidence
+* Relationships
+
+Users unlock nodes through actions.
+
+The map should resemble a skill tree from a AAA video game.
+
+⸻
+
+CONTENT CREATOR MODE
+
+Because many users come from Astraevita.
+
+Include:
+
+* Content publishing tracker
+* Content streaks
+* Idea generation
+* AI caption generation
+* Weekly content challenges
+
+⸻
+
+SIGNATURE FEATURE
+
+The main home screen should not show habits.
+
+It should show:
+
+“YOUR FUTURE IS CURRENTLY 72% ALIGNED.”
+
+Underneath:
+
+The single highest-leverage action for today.
+
+Everything revolves around improving that alignment score.

@@ -74,6 +74,57 @@ export function generateBiographyEntry(userName: string, actionsToday: string[],
   return `${today} — Chapter ${chapterNumber}: ${chapter}. Today, ${userName} chose growth. They completed ${actionText} — not because it was easy, but because they understood that each action writes the next chapter of their story. This is how legends are built, one day at a time.`;
 }
 
+export async function generateDailyMissions(
+  userName: string,
+  recentActionTypes: string[],
+  streakDays: number,
+): Promise<{ critical: string; secondary: [string, string, string]; courage: string }> {
+  const actionSummary = recentActionTypes.length
+    ? `Recent actions: ${[...new Set(recentActionTypes)].join(", ")}.`
+    : "No recent actions yet.";
+
+  const FALLBACK_MISSIONS = {
+    critical: "Complete a 30-minute deep work session on your most important project",
+    secondary: [
+      "Read for 20 minutes — knowledge compounds",
+      "Log at least 8 glasses of water today",
+      "Spend 10 minutes reviewing your financial goals",
+    ] as [string, string, string],
+    courage: "Start a conversation with someone you've been meaning to connect with",
+  };
+
+  try {
+    const resp = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are ASTRA Mission Control — an elite AI life strategist. Generate daily missions for ${userName}. 
+Context: ${actionSummary} Streak: ${streakDays} days.
+Output ONLY valid JSON (no markdown) in this exact shape:
+{"critical":"<one powerful sentence mission>","secondary":["<mission 1>","<mission 2>","<mission 3>"],"courage":"<push outside comfort zone — e.g. make a sales call, post content, wake 30min earlier, start a conversation with a stranger>"}
+Make missions specific, measurable, and tied to the user's context. The courage challenge must feel slightly uncomfortable.`,
+        },
+        { role: "user", content: "Generate today's missions." },
+      ],
+      max_tokens: 400,
+      response_format: { type: "json_object" },
+    });
+
+    const raw = resp.choices[0]?.message?.content ?? "";
+    const parsed = JSON.parse(raw);
+    return {
+      critical: parsed.critical || FALLBACK_MISSIONS.critical,
+      secondary: Array.isArray(parsed.secondary) && parsed.secondary.length >= 3
+        ? [parsed.secondary[0], parsed.secondary[1], parsed.secondary[2]]
+        : FALLBACK_MISSIONS.secondary,
+      courage: parsed.courage || FALLBACK_MISSIONS.courage,
+    };
+  } catch {
+    return FALLBACK_MISSIONS;
+  }
+}
+
 export function generateProjection(scores: Record<string, number>): {
   fitnessProjection: string;
   wealthProjection: string;

@@ -5,13 +5,15 @@ import { useGetMe } from "@workspace/api-client-react";
 import { 
   LayoutDashboard, User, Map, Activity, 
   BookOpen, Mail, FileText, MessageSquare, 
-  GitCommit, Share2, Settings, ShieldAlert
+  GitCommit, Share2, Settings, ShieldAlert,
+  Target, Trophy
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/missions", label: "Mission Control", icon: Target },
   { href: "/future-self", label: "Future Self", icon: User },
-  { href: "/life-map", label: "Life Map", icon: Map },
+  { href: "/life-map", label: "Evolution Map", icon: Map },
   { href: "/actions", label: "Actions", icon: Activity },
   { href: "/chapters", label: "Chapters", icon: BookOpen },
   { href: "/letters", label: "Letters", icon: Mail },

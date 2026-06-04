@@ -87,6 +87,7 @@ const Timeline = React.lazy(() => import("@/pages/Timeline"));
 const Share = React.lazy(() => import("@/pages/Share"));
 const Admin = React.lazy(() => import("@/pages/Admin"));
 const Settings = React.lazy(() => import("@/pages/Settings"));
+const Missions = React.lazy(() => import("@/pages/Missions"));
 
 function LoadingScreen() {
   return (
@@ -166,6 +167,7 @@ function Router() {
         <Route path="/coach"><ProtectedRoute component={Coach} /></Route>
         <Route path="/timeline"><ProtectedRoute component={Timeline} /></Route>
         <Route path="/share"><ProtectedRoute component={Share} /></Route>
+        <Route path="/missions"><ProtectedRoute component={Missions} /></Route>
         <Route path="/admin"><ProtectedRoute component={Admin} /></Route>
         <Route path="/settings"><ProtectedRoute component={Settings} /></Route>
         <Route component={NotFound} />

@@ -6,3 +6,5 @@ export * from "./lifeMap";
 export * from "./letters";
 export * from "./biography";
 export * from "./coaching";
+export * from "./missions";
+export * from "./milestones";
