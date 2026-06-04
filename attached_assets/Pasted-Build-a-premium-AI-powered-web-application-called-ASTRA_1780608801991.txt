@@ -1,0 +1,288 @@
+Build a premium AI-powered web application called ASTRA.
+
+Tagline:
+"Meet The Person You're Becoming."
+
+ASTRA is not a habit tracker, to-do list, productivity app, or fitness tracker.
+
+ASTRA is a Future Self Simulator.
+
+The entire app revolves around one concept:
+
+Every action a user takes changes a realistic AI-generated version of their future self.
+
+The app should feel futuristic, emotional, addictive, and visually stunning.
+
+Design inspiration:
+- Apple
+- Tesla
+- Duolingo
+- Notion
+- Arc Browser
+
+Use dark mode by default.
+
+Create a premium glassmorphism interface with smooth animations, beautiful gradients, modern typography, and highly polished interactions.
+
+---------------------------------------------------
+CORE CONCEPT
+---------------------------------------------------
+
+When a user joins ASTRA, they answer:
+
+- Name
+- Age
+- Gender
+- Height
+- Weight
+- Fitness level
+- Income range
+- Career
+- Main goals
+- Biggest struggles
+- Daily habits
+
+Based on these answers, ASTRA creates:
+
+1. Current Self
+2. Future Self (1 year)
+3. Future Self (5 years)
+
+The Future Self should be represented through:
+
+- AI-generated character profile
+- Health score
+- Wealth score
+- Discipline score
+- Confidence score
+- Knowledge score
+- Life trajectory score
+
+---------------------------------------------------
+THE FUTURE SELF ENGINE
+---------------------------------------------------
+
+Every decision changes the future.
+
+Examples:
+
+Workout completed:
++2% Health
++1% Confidence
+
+Skipped workout:
+-1% Health
+
+Read 20 pages:
++1% Knowledge
+
+Created content:
++2% Creator Score
+
+Saved money:
++1% Wealth
+
+Users immediately see their Future Self evolve.
+
+The Future Self becomes more successful, healthier, stronger, and more confident as positive actions are completed.
+
+---------------------------------------------------
+THE TIMELINE SYSTEM
+---------------------------------------------------
+
+Show users three timelines:
+
+Current Path
+
+Improved Path
+
+Potential Peak Path
+
+Users can switch between timelines and see how different choices affect their future.
+
+---------------------------------------------------
+AI LIFE SIMULATION
+---------------------------------------------------
+
+Generate realistic predictions.
+
+Examples:
+
+"If you continue this habit pattern, your fitness score may increase by 18% within 12 months."
+
+"If your current savings rate continues, your projected wealth score increases by 22%."
+
+The AI should explain WHY.
+
+---------------------------------------------------
+DAILY ACTIONS
+---------------------------------------------------
+
+Users log:
+
+- Workouts
+- Reading
+- Learning
+- Content creation
+- Meditation
+- Saving money
+- Deep work
+- Sleep
+- Water intake
+
+Every action affects future projections.
+
+---------------------------------------------------
+THE LIFE MAP
+---------------------------------------------------
+
+Create a visual life map.
+
+Sections:
+
+- Health
+- Wealth
+- Career
+- Relationships
+- Discipline
+- Knowledge
+
+Each area grows or declines based on behavior.
+
+Display beautiful animated progress systems.
+
+---------------------------------------------------
+THE FUTURE LETTER
+---------------------------------------------------
+
+One of the main features.
+
+The AI writes messages from the user's future self.
+
+Examples:
+
+"Thank you for not quitting."
+
+"Your consistency changed everything."
+
+"You almost gave up in Chapter 3. I'm grateful you kept going."
+
+These messages should feel emotional and motivating.
+
+---------------------------------------------------
+CHAPTER SYSTEM
+---------------------------------------------------
+
+Life progression is divided into chapters.
+
+Chapter 1:
+Awakening
+
+Chapter 2:
+Momentum
+
+Chapter 3:
+Discipline
+
+Chapter 4:
+Growth
+
+Chapter 5:
+Mastery
+
+Chapter 6:
+Legacy
+
+Completing actions unlocks new chapters.
+
+---------------------------------------------------
+LEGACY FEATURE
+---------------------------------------------------
+
+The AI automatically writes the user's biography.
+
+Every day creates a new entry.
+
+Example:
+
+"Today Faris chose growth and completed his workout despite low motivation."
+
+At the end of the year users have an AI-generated story of their life.
+
+---------------------------------------------------
+SOCIAL FEATURES
+---------------------------------------------------
+
+Generate beautiful share cards.
+
+Examples:
+
+Future Self Score:
+87%
+
+Current Growth Streak:
+34 Days
+
+Chapter Completed:
+Mastery
+
+These should be optimized for Instagram stories.
+
+---------------------------------------------------
+AI COACH
+---------------------------------------------------
+
+Built-in AI mentor.
+
+Users can ask:
+
+- What should I improve?
+- What is holding me back?
+- What habit hurts my future most?
+- What should I focus on tomorrow?
+
+The coach should respond like a world-class life strategist.
+
+---------------------------------------------------
+PREMIUM FEATURES
+---------------------------------------------------
+
+- Unlimited AI coaching
+- Advanced future simulations
+- Deep analytics
+- Future Self image evolution
+- Custom life paths
+- Exclusive chapters
+
+---------------------------------------------------
+ADMIN DASHBOARD
+---------------------------------------------------
+
+Create a complete admin dashboard.
+
+Admin can:
+
+- View users
+- View subscriptions
+- View engagement metrics
+- Manage chapters
+- Manage AI prompts
+- View retention analytics
+
+---------------------------------------------------
+TECH STACK
+---------------------------------------------------
+
+Use modern scalable architecture.
+
+Include:
+
+- Authentication
+- Google Login
+- Email Login
+- User Profiles
+- Database
+- Cloud Storage
+- Responsive Mobile Design
+
+The final product should feel like a venture-backed startup capable of launching on the App Store and becoming a category-defining self-improvement platform.

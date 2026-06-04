@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "ASTRA"
+version = "1.0.0"
+id = "artifacts/astra"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20686
+
+[services.development]
+run = "pnpm --filter @workspace/astra run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/astra", "run", "build" ]
+publicDir = "artifacts/astra/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20686"
+BASE_PATH = "/"

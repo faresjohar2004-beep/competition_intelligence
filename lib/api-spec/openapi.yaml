@@ -1,22 +1,43 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: ASTRA Future Self Simulator API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: users
+    description: User profile and onboarding
+  - name: future-self
+    description: Future self scores and profiles
+  - name: actions
+    description: Daily action logging
+  - name: chapters
+    description: Life chapters
+  - name: life-map
+    description: Life map area scores
+  - name: letters
+    description: AI-generated future self letters
+  - name: biography
+    description: AI-generated life biography entries
+  - name: coaching
+    description: AI coaching conversations
+  - name: timeline
+    description: Life timeline projections
+  - name: sharing
+    description: Social share cards
+  - name: admin
+    description: Admin dashboard
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +45,456 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ─── USERS ──────────────────────────────────────────────────────────────────
+  /users/me:
+    get:
+      operationId: getMe
+      tags: [users]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateMe
+      tags: [users]
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/onboard:
+    post:
+      operationId: onboardUser
+      tags: [users]
+      summary: Complete onboarding with initial profile data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OnboardingInput"
+      responses:
+        "201":
+          description: User created and onboarded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/stats:
+    get:
+      operationId: getUserStats
+      tags: [users]
+      summary: Get user stats summary (streak, total actions, chapter)
+      responses:
+        "200":
+          description: User stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserStats"
+
+  # ─── FUTURE SELF ────────────────────────────────────────────────────────────
+  /future-self:
+    get:
+      operationId: getFutureSelf
+      tags: [future-self]
+      summary: Get all future self profiles (current, 1yr, 5yr)
+      responses:
+        "200":
+          description: Future self profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FutureSelf"
+
+  /future-self/projection:
+    get:
+      operationId: getFutureSelfProjection
+      tags: [future-self]
+      summary: Get AI-generated projection narrative for future self
+      responses:
+        "200":
+          description: Projection narrative
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FutureProjection"
+
+  /future-self/scores:
+    get:
+      operationId: getFutureSelfScores
+      tags: [future-self]
+      summary: Get score history over time for charts
+      responses:
+        "200":
+          description: Score history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScoreHistory"
+
+  # ─── ACTIONS ────────────────────────────────────────────────────────────────
+  /actions:
+    get:
+      operationId: getActions
+      tags: [actions]
+      summary: Get user's logged actions
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          description: Max number of actions
+        - in: query
+          name: date
+          schema:
+            type: string
+          description: Filter by date (YYYY-MM-DD)
+      responses:
+        "200":
+          description: List of actions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Action"
+    post:
+      operationId: logAction
+      tags: [actions]
+      summary: Log a daily action
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionInput"
+      responses:
+        "201":
+          description: Logged action with score impact
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResult"
+
+  /actions/today:
+    get:
+      operationId: getTodayActions
+      tags: [actions]
+      summary: Get today's actions and completion status
+      responses:
+        "200":
+          description: Today's action summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TodaySummary"
+
+  /actions/impact:
+    get:
+      operationId: getActionImpact
+      tags: [actions]
+      summary: Get score impact breakdown by action type
+      responses:
+        "200":
+          description: Action impact breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActionImpact"
+
+  # ─── CHAPTERS ───────────────────────────────────────────────────────────────
+  /chapters:
+    get:
+      operationId: getChapters
+      tags: [chapters]
+      summary: Get all chapters and user progress
+      responses:
+        "200":
+          description: Chapters list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Chapter"
+
+  /chapters/current:
+    get:
+      operationId: getCurrentChapter
+      tags: [chapters]
+      summary: Get user's current chapter
+      responses:
+        "200":
+          description: Current chapter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chapter"
+
+  # ─── LIFE MAP ───────────────────────────────────────────────────────────────
+  /life-map:
+    get:
+      operationId: getLifeMap
+      tags: [life-map]
+      summary: Get all life map area scores
+      responses:
+        "200":
+          description: Life map areas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LifeArea"
+
+  /life-map/history:
+    get:
+      operationId: getLifeMapHistory
+      tags: [life-map]
+      summary: Get life map area score history for charts
+      responses:
+        "200":
+          description: Life area history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LifeAreaHistory"
+
+  # ─── FUTURE LETTERS ─────────────────────────────────────────────────────────
+  /letters:
+    get:
+      operationId: getLetters
+      tags: [letters]
+      summary: Get AI-generated letters from future self
+      responses:
+        "200":
+          description: Letters list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FutureLetter"
+
+  /letters/latest:
+    get:
+      operationId: getLatestLetter
+      tags: [letters]
+      summary: Get the most recent letter from future self
+      responses:
+        "200":
+          description: Latest letter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FutureLetter"
+
+  /letters/generate:
+    post:
+      operationId: generateLetter
+      tags: [letters]
+      summary: Generate a new AI letter from future self
+      responses:
+        "201":
+          description: Generated letter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FutureLetter"
+
+  # ─── BIOGRAPHY ──────────────────────────────────────────────────────────────
+  /biography:
+    get:
+      operationId: getBiography
+      tags: [biography]
+      summary: Get all biography entries
+      responses:
+        "200":
+          description: Biography entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BiographyEntry"
+
+  /biography/today:
+    post:
+      operationId: generateBiographyEntry
+      tags: [biography]
+      summary: Generate today's biography entry
+      responses:
+        "201":
+          description: Today's biography entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BiographyEntry"
+
+  # ─── AI COACHING ────────────────────────────────────────────────────────────
+  /coaching/messages:
+    get:
+      operationId: getCoachingMessages
+      tags: [coaching]
+      summary: Get AI coaching conversation history
+      responses:
+        "200":
+          description: Message history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CoachingMessage"
+    post:
+      operationId: sendCoachingMessage
+      tags: [coaching]
+      summary: Send message to AI coach and get response
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoachingMessageInput"
+      responses:
+        "201":
+          description: AI coach response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachingMessage"
+
+  /coaching/insights:
+    get:
+      operationId: getCoachingInsights
+      tags: [coaching]
+      summary: Get AI-generated personalized insights
+      responses:
+        "200":
+          description: Coaching insights
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CoachingInsight"
+
+  # ─── TIMELINE ───────────────────────────────────────────────────────────────
+  /timeline:
+    get:
+      operationId: getTimeline
+      tags: [timeline]
+      summary: Get all three timeline paths (current, improved, peak)
+      responses:
+        "200":
+          description: Timeline projections
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimelineProjections"
+
+  # ─── SHARING ────────────────────────────────────────────────────────────────
+  /sharing/card:
+    get:
+      operationId: getShareCard
+      tags: [sharing]
+      summary: Get share card data for social media
+      responses:
+        "200":
+          description: Share card data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShareCard"
+
+  # ─── ADMIN ──────────────────────────────────────────────────────────────────
+  /admin/users:
+    get:
+      operationId: adminGetUsers
+      tags: [admin]
+      summary: Admin — list all users
+      responses:
+        "200":
+          description: Users list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUser"
+
+  /admin/metrics:
+    get:
+      operationId: adminGetMetrics
+      tags: [admin]
+      summary: Admin — get engagement and retention metrics
+      responses:
+        "200":
+          description: Metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMetrics"
+
+  /admin/chapters:
+    get:
+      operationId: adminGetChapters
+      tags: [admin]
+      summary: Admin — list all chapters
+      responses:
+        "200":
+          description: Chapters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Chapter"
+    post:
+      operationId: adminCreateChapter
+      tags: [admin]
+      summary: Admin — create a chapter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChapterInput"
+      responses:
+        "201":
+          description: Created chapter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chapter"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +502,530 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    User:
+      type: object
+      required: [id, clerkId, name, email, onboarded, createdAt]
+      properties:
+        id:
+          type: integer
+        clerkId:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+        onboarded:
+          type: boolean
+        age:
+          type: ["integer", "null"]
+        gender:
+          type: ["string", "null"]
+        height:
+          type: ["number", "null"]
+        weight:
+          type: ["number", "null"]
+        fitnessLevel:
+          type: ["string", "null"]
+        incomeRange:
+          type: ["string", "null"]
+        career:
+          type: ["string", "null"]
+        mainGoals:
+          type: ["string", "null"]
+        biggestStruggles:
+          type: ["string", "null"]
+        dailyHabits:
+          type: ["string", "null"]
+        currentChapter:
+          type: integer
+        streakDays:
+          type: integer
+        role:
+          type: string
+        createdAt:
+          type: string
+
+    UserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        career:
+          type: string
+        mainGoals:
+          type: string
+        biggestStruggles:
+          type: string
+
+    OnboardingInput:
+      type: object
+      required: [name, email, clerkId]
+      properties:
+        clerkId:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        avatarUrl:
+          type: string
+        age:
+          type: integer
+        gender:
+          type: string
+        height:
+          type: number
+        weight:
+          type: number
+        fitnessLevel:
+          type: string
+        incomeRange:
+          type: string
+        career:
+          type: string
+        mainGoals:
+          type: string
+        biggestStruggles:
+          type: string
+        dailyHabits:
+          type: string
+
+    UserStats:
+      type: object
+      required: [streakDays, totalActions, currentChapter, overallScore, joinedDaysAgo]
+      properties:
+        streakDays:
+          type: integer
+        totalActions:
+          type: integer
+        currentChapter:
+          type: integer
+        overallScore:
+          type: number
+        joinedDaysAgo:
+          type: integer
+        actionsThisWeek:
+          type: integer
+
+    FutureSelf:
+      type: object
+      required: [id, userId, timeframe, healthScore, wealthScore, disciplineScore, confidenceScore, knowledgeScore, trajectoryScore, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        timeframe:
+          type: string
+          enum: [current, one_year, five_years]
+        healthScore:
+          type: number
+        wealthScore:
+          type: number
+        disciplineScore:
+          type: number
+        confidenceScore:
+          type: number
+        knowledgeScore:
+          type: number
+        trajectoryScore:
+          type: number
+        overallScore:
+          type: number
+        characterDescription:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    FutureProjection:
+      type: object
+      required: [fitnessProjection, wealthProjection, overallNarrative]
+      properties:
+        fitnessProjection:
+          type: string
+        wealthProjection:
+          type: string
+        disciplineProjection:
+          type: string
+        overallNarrative:
+          type: string
+        topRecommendation:
+          type: string
+
+    ScoreHistory:
+      type: object
+      required: [date, healthScore, wealthScore, disciplineScore, confidenceScore, knowledgeScore]
+      properties:
+        date:
+          type: string
+        healthScore:
+          type: number
+        wealthScore:
+          type: number
+        disciplineScore:
+          type: number
+        confidenceScore:
+          type: number
+        knowledgeScore:
+          type: number
+
+    Action:
+      type: object
+      required: [id, userId, type, completedAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        type:
+          type: string
+          enum: [workout, reading, learning, content_creation, meditation, saving, deep_work, sleep, water]
+        notes:
+          type: ["string", "null"]
+        healthImpact:
+          type: number
+        wealthImpact:
+          type: number
+        disciplineImpact:
+          type: number
+        confidenceImpact:
+          type: number
+        knowledgeImpact:
+          type: number
+        completedAt:
+          type: string
+
+    ActionInput:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [workout, reading, learning, content_creation, meditation, saving, deep_work, sleep, water]
+        notes:
+          type: string
+
+    ActionResult:
+      type: object
+      required: [action, scoreImpact, newScores]
+      properties:
+        action:
+          $ref: "#/components/schemas/Action"
+        scoreImpact:
+          $ref: "#/components/schemas/ScoreImpact"
+        newScores:
+          $ref: "#/components/schemas/FutureSelf"
+
+    ScoreImpact:
+      type: object
+      properties:
+        healthDelta:
+          type: number
+        wealthDelta:
+          type: number
+        disciplineDelta:
+          type: number
+        confidenceDelta:
+          type: number
+        knowledgeDelta:
+          type: number
+        message:
+          type: string
+
+    TodaySummary:
+      type: object
+      required: [date, actions, completedTypes, totalPossibleTypes]
+      properties:
+        date:
+          type: string
+        actions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Action"
+        completedTypes:
+          type: integer
+        totalPossibleTypes:
+          type: integer
+        completionPercentage:
+          type: number
+
+    ActionImpact:
+      type: object
+      required: [actionType, count, totalHealthImpact, totalWealthImpact, totalDisciplineImpact]
+      properties:
+        actionType:
+          type: string
+        count:
+          type: integer
+        totalHealthImpact:
+          type: number
+        totalWealthImpact:
+          type: number
+        totalDisciplineImpact:
+          type: number
+        totalConfidenceImpact:
+          type: number
+        totalKnowledgeImpact:
+          type: number
+
+    Chapter:
+      type: object
+      required: [id, number, title, subtitle, description, requiredActions, unlocked]
+      properties:
+        id:
+          type: integer
+        number:
+          type: integer
+        title:
+          type: string
+        subtitle:
+          type: string
+        description:
+          type: string
+        requiredActions:
+          type: integer
+        unlocked:
+          type: boolean
+        completedAt:
+          type: ["string", "null"]
+        isCurrentChapter:
+          type: boolean
+
+    ChapterInput:
+      type: object
+      required: [number, title, subtitle, description, requiredActions]
+      properties:
+        number:
+          type: integer
+        title:
+          type: string
+        subtitle:
+          type: string
+        description:
+          type: string
+        requiredActions:
+          type: integer
+
+    LifeArea:
+      type: object
+      required: [id, area, score, trend, updatedAt]
+      properties:
+        id:
+          type: integer
+        area:
+          type: string
+          enum: [health, wealth, career, relationships, discipline, knowledge]
+        score:
+          type: number
+        trend:
+          type: number
+        description:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+
+    LifeAreaHistory:
+      type: object
+      required: [area, history]
+      properties:
+        area:
+          type: string
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/AreaDataPoint"
+
+    AreaDataPoint:
+      type: object
+      required: [date, score]
+      properties:
+        date:
+          type: string
+        score:
+          type: number
+
+    FutureLetter:
+      type: object
+      required: [id, userId, content, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        content:
+          type: string
+        emotionalTone:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    BiographyEntry:
+      type: object
+      required: [id, userId, date, content, chapterNumber, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        date:
+          type: string
+        content:
+          type: string
+        chapterNumber:
+          type: integer
+        createdAt:
+          type: string
+
+    CoachingMessage:
+      type: object
+      required: [id, userId, role, content, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        createdAt:
+          type: string
+
+    CoachingMessageInput:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+
+    CoachingInsight:
+      type: object
+      required: [id, type, content, priority, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [strength, weakness, recommendation, warning]
+        content:
+          type: string
+        priority:
+          type: integer
+        createdAt:
+          type: string
+
+    TimelineProjections:
+      type: object
+      required: [current, improved, peak]
+      properties:
+        current:
+          $ref: "#/components/schemas/TimelinePath"
+        improved:
+          $ref: "#/components/schemas/TimelinePath"
+        peak:
+          $ref: "#/components/schemas/TimelinePath"
+
+    TimelinePath:
+      type: object
+      required: [name, description, projectedScore, milestones]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        projectedScore:
+          type: number
+        milestones:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelineMilestone"
+
+    TimelineMilestone:
+      type: object
+      required: [month, event, scoreProjection]
+      properties:
+        month:
+          type: integer
+        event:
+          type: string
+        scoreProjection:
+          type: number
+
+    ShareCard:
+      type: object
+      required: [userName, overallScore, streakDays, currentChapterTitle, topArea]
+      properties:
+        userName:
+          type: string
+        overallScore:
+          type: number
+        streakDays:
+          type: integer
+        currentChapterTitle:
+          type: string
+        topArea:
+          type: string
+        generatedAt:
+          type: string
+
+    AdminUser:
+      type: object
+      required: [id, name, email, onboarded, createdAt, streakDays, totalActions, currentChapter]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        onboarded:
+          type: boolean
+        createdAt:
+          type: string
+        streakDays:
+          type: integer
+        totalActions:
+          type: integer
+        currentChapter:
+          type: integer
+        role:
+          type: string
+
+    AdminMetrics:
+      type: object
+      required: [totalUsers, activeUsers, avgStreak, totalActionsLogged, retentionRate]
+      properties:
+        totalUsers:
+          type: integer
+        activeUsers:
+          type: integer
+        avgStreak:
+          type: number
+        totalActionsLogged:
+          type: integer
+        retentionRate:
+          type: number
+        topActionTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionImpact"
+        chapterDistribution:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChapterDistribution"
+
+    ChapterDistribution:
+      type: object
+      required: [chapterNumber, userCount]
+      properties:
+        chapterNumber:
+          type: integer
+        userCount:
+          type: integer
