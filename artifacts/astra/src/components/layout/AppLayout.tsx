@@ -1,13 +1,15 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { useAuth, UserButton } from "@clerk/react";
+import { useClerk } from "@clerk/react";
 import { useGetMe } from "@workspace/api-client-react";
 import { 
   LayoutDashboard, User, Map, Activity, 
   BookOpen, Mail, FileText, MessageSquare, 
   GitCommit, Share2, Settings, ShieldAlert,
-  Target, Trophy
+  Target, LogOut
 } from "lucide-react";
+
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -26,6 +28,7 @@ const NAV_ITEMS = [
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { data: user } = useGetMe();
+  const { signOut } = useClerk();
 
   return (
     <div className="min-h-screen bg-background text-foreground flex">
@@ -85,10 +88,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Settings className="w-5 h-5" />
             Settings
           </Link>
-          <div className="flex items-center gap-3 px-3 py-3 mt-2">
-            <UserButton afterSignOutUrl="/" appearance={{ elements: { userButtonAvatarBox: "w-8 h-8" } }} />
-            <div className="text-sm font-medium">{user?.name || "User"}</div>
+          <div className="flex items-center gap-3 px-3 py-2.5 mt-1">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+              {(user?.name || "U").charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium truncate">{user?.name || "User"}</div>
+            </div>
           </div>
+          <button
+            onClick={() => signOut({ redirectUrl: basePath || "/" })}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-md w-full text-left transition-all text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          >
+            <LogOut className="w-5 h-5" />
+            Sign Out
+          </button>
         </div>
       </aside>
 
