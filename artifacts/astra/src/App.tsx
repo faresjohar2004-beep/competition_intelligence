@@ -176,23 +176,29 @@ function Router() {
   );
 }
 
-function App() {
+function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
+  return (
+    <ClerkProvider
+      publishableKey={clerkPubKey}
+      proxyUrl={clerkProxyUrl}
+      appearance={clerkAppearance}
+      signInUrl={`${basePath}/sign-in`}
+      signUpUrl={`${basePath}/sign-up`}
+      routerPush={(to) => setLocation(stripBase(to))}
+      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
+    >
+      <Router />
+    </ClerkProvider>
+  );
+}
+
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={basePath}>
-          <ClerkProvider
-            publishableKey={clerkPubKey}
-            proxyUrl={clerkProxyUrl}
-            appearance={clerkAppearance}
-            signInUrl={`${basePath}/sign-in`}
-            signUpUrl={`${basePath}/sign-up`}
-            routerPush={(to) => setLocation(stripBase(to))}
-            routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
-          >
-            <Router />
-          </ClerkProvider>
+          <ClerkProviderWithRoutes />
         </WouterRouter>
         <Toaster />
       </TooltipProvider>
