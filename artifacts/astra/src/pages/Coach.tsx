@@ -3,9 +3,11 @@ import { useGetCoachingMessages, useSendCoachingMessage, useGetCoachingInsights,
 import { useGetMe, useGetTodayActions, useGetUserStats } from "@workspace/api-client-react";
 import { useAlignment } from "@/hooks/useMissions";
 import { useQueryClient } from "@tanstack/react-query";
+import { useIsPaywalled } from "@/hooks/useSubscription";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Send, Bot, User, Lightbulb, TrendingUp, AlertTriangle } from "lucide-react";
+import { Send, Bot, User, Lightbulb, TrendingUp, AlertTriangle, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const INSIGHT_ICONS: Record<string, any> = {
@@ -142,6 +144,9 @@ export default function Coach() {
     handleSend(prompt);
   };
 
+  const isPaywalled = useIsPaywalled();
+  const [, navigate] = useLocation();
+
   return (
     <AppLayout>
       <div className="flex h-[calc(100vh-0px)] overflow-hidden">
@@ -161,7 +166,34 @@ export default function Coach() {
                 <span className="text-xs text-muted-foreground">Online · Your personal strategist</span>
               </div>
             </div>
+            {isPaywalled && (
+              <div className="ml-auto">
+                <Button onClick={() => navigate("/upgrade")} size="sm" className="gap-1.5 text-xs h-8">
+                  <Crown className="h-3 w-3" />Upgrade for unlimited coaching
+                </Button>
+              </div>
+            )}
           </div>
+
+          {/* Pro banner */}
+          {isPaywalled && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mx-4 mt-3 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3 shrink-0"
+            >
+              <div className="flex items-center gap-2">
+                <Crown className="h-3.5 w-3.5 text-primary shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">Your free trial has ended.</span>{" "}
+                  Upgrade to Pro for unlimited AI coaching sessions and full conversation history.
+                </p>
+              </div>
+              <button onClick={() => navigate("/upgrade")} className="text-xs text-primary hover:text-primary/80 font-semibold shrink-0 transition-colors">
+                Upgrade →
+              </button>
+            </motion.div>
+          )}
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">

@@ -2,10 +2,16 @@ import React from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import { useGetFutureSelf, useGetFutureSelfProjection, useGetFutureSelfScores } from "@workspace/api-client-react";
 import { motion } from "framer-motion";
+import { useLocation } from "wouter";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Crown, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useIsPaywalled } from "@/hooks/useSubscription";
 
 export default function FutureSelf() {
+  const [, navigate] = useLocation();
+  const isPaywalled = useIsPaywalled();
   const { data: futureSelves, isLoading: fsLoading } = useGetFutureSelf();
   const { data: projection, isLoading: projLoading } = useGetFutureSelfProjection();
   const { data: scoreHistory, isLoading: histLoading } = useGetFutureSelfScores();
@@ -43,55 +49,124 @@ export default function FutureSelf() {
           <ProfileCard title="5-Year Peak" self={year5} delay={0.4} glowColor="bg-amber-500/20" highlighted />
         </div>
 
-        {projection && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="rounded-2xl border border-white/5 bg-card/80 backdrop-blur-xl p-8 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-[100px] pointer-events-none"></div>
-            <h2 className="text-2xl font-bold text-white mb-6 relative z-10">AI Projection Narrative</h2>
-            <div className="grid md:grid-cols-2 gap-8 relative z-10">
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-sm font-semibold text-primary uppercase tracking-wider mb-2">Overall Narrative</h3>
-                  <p className="text-muted-foreground leading-relaxed">{projection.overallNarrative}</p>
-                </div>
-                {projection.topRecommendation && (
-                  <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
-                    <h3 className="text-sm font-semibold text-primary uppercase tracking-wider mb-2">Top Recommendation</h3>
-                    <p className="text-white">{projection.topRecommendation}</p>
-                  </div>
-                )}
+        {/* AI Projection Narrative — Pro only */}
+        {isPaywalled ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="rounded-2xl border border-primary/20 bg-card/80 backdrop-blur-xl p-8 relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
+            <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-6">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                <Crown className="h-7 w-7 text-primary" />
               </div>
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-sm font-semibold text-emerald-400 uppercase tracking-wider mb-2">Fitness Projection</h3>
-                  <p className="text-muted-foreground">{projection.fitnessProjection}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-amber-400 uppercase tracking-wider mb-2">Wealth Projection</h3>
-                  <p className="text-muted-foreground">{projection.wealthProjection}</p>
-                </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-white mb-1">AI Projection Narrative</h2>
+                <p className="text-muted-foreground text-sm leading-relaxed max-w-xl">
+                  Upgrade to Pro to unlock a detailed AI analysis of your trajectory — overall narrative, fitness projection, wealth forecast, and your single highest-leverage recommendation.
+                </p>
+              </div>
+              <Button onClick={() => navigate("/upgrade")} className="gap-2 shrink-0">
+                <Crown className="h-4 w-4" />Unlock Projections
+              </Button>
+            </div>
+
+            {/* Blurred preview */}
+            <div className="mt-6 grid md:grid-cols-2 gap-6 blur-sm opacity-40 pointer-events-none select-none">
+              <div className="space-y-3">
+                <div className="h-3 bg-white/20 rounded w-32" />
+                <div className="h-2.5 bg-white/10 rounded w-full" />
+                <div className="h-2.5 bg-white/10 rounded w-4/5" />
+                <div className="h-2.5 bg-white/10 rounded w-3/4" />
+              </div>
+              <div className="space-y-3">
+                <div className="h-3 bg-emerald-400/20 rounded w-28" />
+                <div className="h-2.5 bg-white/10 rounded w-full" />
+                <div className="h-2.5 bg-white/10 rounded w-2/3" />
               </div>
             </div>
           </motion.div>
+        ) : (
+          projection && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="rounded-2xl border border-white/5 bg-card/80 backdrop-blur-xl p-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-[100px] pointer-events-none"></div>
+              <h2 className="text-2xl font-bold text-white mb-6 relative z-10">AI Projection Narrative</h2>
+              <div className="grid md:grid-cols-2 gap-8 relative z-10">
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-sm font-semibold text-primary uppercase tracking-wider mb-2">Overall Narrative</h3>
+                    <p className="text-muted-foreground leading-relaxed">{projection.overallNarrative}</p>
+                  </div>
+                  {projection.topRecommendation && (
+                    <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
+                      <h3 className="text-sm font-semibold text-primary uppercase tracking-wider mb-2">Top Recommendation</h3>
+                      <p className="text-white">{projection.topRecommendation}</p>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-sm font-semibold text-emerald-400 uppercase tracking-wider mb-2">Fitness Projection</h3>
+                    <p className="text-muted-foreground">{projection.fitnessProjection}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-amber-400 uppercase tracking-wider mb-2">Wealth Projection</h3>
+                    <p className="text-muted-foreground">{projection.wealthProjection}</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )
         )}
 
+        {/* Score History — Pro only */}
         {scoreHistory && scoreHistory.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="rounded-2xl border border-white/5 bg-card/80 backdrop-blur-xl p-8">
-            <h2 className="text-2xl font-bold text-white mb-6">Score History</h2>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={scoreHistory}>
-                  <XAxis dataKey="date" stroke="#ffffff40" fontSize={12} tickFormatter={(val) => new Date(val).toLocaleDateString(undefined, {month:'short', day:'numeric'})} />
-                  <YAxis stroke="#ffffff40" fontSize={12} />
-                  <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }} />
-                  <Line type="monotone" dataKey="healthScore" stroke="#34d399" strokeWidth={2} dot={false} name="Health" />
-                  <Line type="monotone" dataKey="wealthScore" stroke="#fbbf24" strokeWidth={2} dot={false} name="Wealth" />
-                  <Line type="monotone" dataKey="disciplineScore" stroke="#60a5fa" strokeWidth={2} dot={false} name="Discipline" />
-                  <Line type="monotone" dataKey="confidenceScore" stroke="#fb923c" strokeWidth={2} dot={false} name="Confidence" />
-                  <Line type="monotone" dataKey="knowledgeScore" stroke="#a78bfa" strokeWidth={2} dot={false} name="Knowledge" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </motion.div>
+          isPaywalled ? (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="rounded-2xl border border-white/5 bg-card/80 backdrop-blur-xl p-8 relative overflow-hidden">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-white">Score History</h2>
+                <div className="flex items-center gap-2 text-xs text-primary bg-primary/10 border border-primary/20 rounded-full px-3 py-1">
+                  <Lock className="h-3 w-3" />Pro feature
+                </div>
+              </div>
+              <div className="h-80 blur-sm opacity-30 pointer-events-none">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={scoreHistory}>
+                    <XAxis dataKey="date" stroke="#ffffff40" fontSize={12} />
+                    <YAxis stroke="#ffffff40" fontSize={12} />
+                    <Line type="monotone" dataKey="healthScore" stroke="#34d399" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="wealthScore" stroke="#fbbf24" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="disciplineScore" stroke="#60a5fa" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Button onClick={() => navigate("/upgrade")} className="gap-2">
+                  <Crown className="h-4 w-4" />Unlock Score History
+                </Button>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="rounded-2xl border border-white/5 bg-card/80 backdrop-blur-xl p-8">
+              <h2 className="text-2xl font-bold text-white mb-6">Score History</h2>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={scoreHistory}>
+                    <XAxis dataKey="date" stroke="#ffffff40" fontSize={12} tickFormatter={(val) => new Date(val).toLocaleDateString(undefined, {month:'short', day:'numeric'})} />
+                    <YAxis stroke="#ffffff40" fontSize={12} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }} />
+                    <Line type="monotone" dataKey="healthScore" stroke="#34d399" strokeWidth={2} dot={false} name="Health" />
+                    <Line type="monotone" dataKey="wealthScore" stroke="#fbbf24" strokeWidth={2} dot={false} name="Wealth" />
+                    <Line type="monotone" dataKey="disciplineScore" stroke="#60a5fa" strokeWidth={2} dot={false} name="Discipline" />
+                    <Line type="monotone" dataKey="confidenceScore" stroke="#fb923c" strokeWidth={2} dot={false} name="Confidence" />
+                    <Line type="monotone" dataKey="knowledgeScore" stroke="#a78bfa" strokeWidth={2} dot={false} name="Knowledge" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
+          )
         )}
       </div>
     </AppLayout>
