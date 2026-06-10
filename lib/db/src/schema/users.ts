@@ -23,6 +23,9 @@ export const usersTable = pgTable("users", {
   currentChapter: integer("current_chapter").notNull().default(1),
   streakDays: integer("streak_days").notNull().default(0),
   lastActiveDate: text("last_active_date"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  isPro: boolean("is_pro").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

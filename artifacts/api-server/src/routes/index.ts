@@ -12,6 +12,7 @@ import timelineRouter from "./timeline";
 import sharingRouter from "./sharing";
 import adminRouter from "./admin";
 import missionsRouter from "./missions";
+import stripeRouter from "./stripe";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use("/timeline", timelineRouter);
 router.use("/sharing", sharingRouter);
 router.use("/admin", adminRouter);
 router.use("/missions", missionsRouter);
+router.use("/stripe", stripeRouter);
 
 export default router;
