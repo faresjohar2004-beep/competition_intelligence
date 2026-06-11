@@ -1,0 +1,226 @@
+Main Task:
+
+Improve AstraVita based on the current analytics and transform it from a brand page into a daily self-improvement operating system.
+
+Current traffic is reaching the homepage, but visitors are not engaging deeply enough with the product.
+
+The goal is for visitors to understand AstraVita within 5-10 seconds and immediately begin their journey.
+
+Keep the current dark, premium, minimalist design.
+
+Do not clutter the interface.
+
+HERO SECTION
+
+Replace the current hero section with:
+
+ASTRAVITA
+
+Become Who You Said You’d Be.
+
+One action.
+One promise.
+One day at a time.
+
+[ Start Assessment ]
+[ Sign In ]
+
+Immediately below the hero section add three visual preview cards:
+
+Future Alignment
+87%
+
+Current Streak
+12 Days
+
+Today’s Promise
+Complete Workout
+
+The purpose is to instantly communicate what AstraVita does.
+
+SECTION 2
+
+Headline:
+
+Your Future Self Is Built Daily.
+
+Subtext:
+
+Small actions repeated consistently create extraordinary change.
+
+Display three pillars:
+
+Identity
+Become the person you respect.
+
+Discipline
+Keep promises to yourself.
+
+Consistency
+Show up every day.
+
+SECTION 3
+
+Headline:
+
+How AstraVita Works
+
+Step 1
+Make a Promise
+
+Step 2
+Complete Today’s Action
+
+Step 3
+Collect Evidence
+
+Step 4
+Strengthen Identity
+
+Step 5
+Return Tomorrow
+
+Use a clean visual progression.
+
+START ASSESSMENT FLOW
+
+When users click Start Assessment:
+
+Question 1
+
+What area do you want to improve most?
+
+* Discipline
+* Fitness
+* Focus
+* Consistency
+* Learning
+* Business
+
+Question 2
+
+What is your biggest challenge?
+
+* I start but don’t finish
+* I lack discipline
+* I get distracted
+* I have no system
+* I procrastinate
+* I lose motivation
+
+Question 3
+
+How many days will you commit?
+
+* 7 Days
+* 30 Days
+* 90 Days
+
+PERSONALIZED PATH
+
+After completing the assessment generate:
+
+* Daily Action
+* Identity Goal
+* Current Alignment Score
+* Streak Tracker
+* Weekly Scorecard
+* Reflection Prompt
+
+USER DASHBOARD
+
+Display:
+
+Today’s Promise
+
+Current Streak
+
+Future Alignment
+
+Identity Progress
+
+Daily Action
+
+Reflection Prompt
+
+Weekly Score
+
+Evidence Collected
+
+FUTURE ALIGNMENT SYSTEM
+
+Every completed action improves Future Alignment.
+
+Examples:
+
+Workout Completed = +3%
+
+Reading Session = +2%
+
+Reflection Completed = +2%
+
+Hydration Goal = +1%
+
+Missed Promise = -2%
+
+Display Future Alignment prominently throughout the platform.
+
+EVIDENCE VAULT
+
+Create an Evidence Vault.
+
+Every completed action becomes proof.
+
+Examples:
+
+✓ Promise Kept
+
+✓ Workout Completed
+
+✓ Learning Session Completed
+
+✓ Reflection Finished
+
+✓ Goal Achieved
+
+Display:
+
+Today’s Evidence
+
+Lifetime Evidence
+
+Current Streak
+
+LANDING PAGE CTA
+
+Final Section:
+
+Ready To Meet The Person You’re Becoming?
+
+[ Start Assessment ]
+
+DESIGN REQUIREMENTS
+
+* Mobile First
+* Black Background
+* White Typography
+* Premium
+* Minimal
+* Strong Typography
+* Fast Loading
+* High Conversion
+
+DO NOT ADD
+
+* Social Feeds
+* Comments
+* Forums
+* Chat Systems
+* Complex Analytics
+* Unnecessary Features
+
+Core Loop:
+
+Make Promise → Complete Action → Add Evidence → Strengthen Identity → Improve Future Alignment → Return Tomorrow
+
+Implement directly into the current AstraVita application while preserving existing functionality.

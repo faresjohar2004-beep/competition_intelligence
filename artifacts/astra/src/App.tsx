@@ -90,6 +90,7 @@ const Settings = React.lazy(() => import("@/pages/Settings"));
 const Missions = React.lazy(() => import("@/pages/Missions"));
 const Upgrade = React.lazy(() => import("@/pages/Upgrade"));
 const UpgradeSuccess = React.lazy(() => import("@/pages/UpgradeSuccess"));
+const Evidence = React.lazy(() => import("@/pages/Evidence"));
 
 function LoadingScreen() {
   return (
@@ -174,6 +175,7 @@ function Router() {
         <Route path="/settings"><ProtectedRoute component={Settings} /></Route>
         <Route path="/upgrade"><ProtectedRoute component={Upgrade} /></Route>
         <Route path="/upgrade/success"><ProtectedRoute component={UpgradeSuccess} /></Route>
+        <Route path="/evidence"><ProtectedRoute component={Evidence} /></Route>
         <Route component={NotFound} />
       </Switch>
     </Suspense>

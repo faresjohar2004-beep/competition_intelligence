@@ -6,23 +6,24 @@ import {
   LayoutDashboard, User, Map, Activity, 
   BookOpen, Mail, FileText, MessageSquare, 
   GitCommit, Share2, Settings, ShieldAlert,
-  Target, LogOut
+  Target, LogOut, Shield,
 } from "lucide-react";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/missions", label: "Mission Control", icon: Target },
-  { href: "/future-self", label: "Future Self", icon: User },
-  { href: "/life-map", label: "Evolution Map", icon: Map },
-  { href: "/actions", label: "Actions", icon: Activity },
-  { href: "/chapters", label: "Chapters", icon: BookOpen },
-  { href: "/letters", label: "Letters", icon: Mail },
-  { href: "/biography", label: "Biography", icon: FileText },
-  { href: "/coach", label: "AI Coach", icon: MessageSquare },
-  { href: "/timeline", label: "Timeline", icon: GitCommit },
-  { href: "/share", label: "Share", icon: Share2 },
+  { href: "/dashboard",  label: "Dashboard",      icon: LayoutDashboard },
+  { href: "/missions",   label: "Mission Control", icon: Target },
+  { href: "/future-self",label: "Future Self",     icon: User },
+  { href: "/life-map",   label: "Evolution Map",   icon: Map },
+  { href: "/actions",    label: "Actions",          icon: Activity },
+  { href: "/evidence",   label: "Evidence Vault",   icon: Shield },
+  { href: "/chapters",   label: "Chapters",         icon: BookOpen },
+  { href: "/letters",    label: "Letters",          icon: Mail },
+  { href: "/biography",  label: "Biography",        icon: FileText },
+  { href: "/coach",      label: "AI Coach",         icon: MessageSquare },
+  { href: "/timeline",   label: "Timeline",         icon: GitCommit },
+  { href: "/share",      label: "Share",            icon: Share2 },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
