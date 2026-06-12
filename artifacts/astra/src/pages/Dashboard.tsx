@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap, Target, Trophy, Flame, Shield, Skull, ArrowRight, AlertTriangle,
   CheckCircle, Star, Dumbbell, BookOpen, Brain, Video, Leaf, DollarSign,
-  Laptop, Moon, Droplets, CheckCircle2,
+  Laptop, Moon, Droplets, CheckCircle2, Sparkles,
 } from "lucide-react";
 
 // ─── Action config (shared with Actions page) ────────────────────────────────
@@ -39,6 +39,219 @@ const COLOR_MAP: Record<string, { text: string; bg: string; ring: string; border
   sky:     { text: "text-sky-400",     bg: "bg-sky-500/10",     ring: "from-sky-500 to-blue-400",       border: "border-sky-500/30" },
   cyan:    { text: "text-cyan-400",    bg: "bg-cyan-500/10",    ring: "from-cyan-500 to-sky-400",       border: "border-cyan-500/30" },
 };
+
+// ─── Daily Briefing ──────────────────────────────────────────────────────────
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+type BriefingTier = {
+  word: string;
+  wordColor: string;
+  headlines: string[];
+  bodies: string[];
+  nextMilestone: number;
+  milestoneLabel: string;
+};
+
+function getBriefingTier(streakDays: number): BriefingTier {
+  if (streakDays === 0) return {
+    word: "BEGIN", wordColor: "text-white",
+    headlines: [
+      "Every legend started with day one.",
+      "The person you want to be starts right now.",
+      "Today is not ordinary. It's the beginning.",
+    ],
+    bodies: [
+      "History's most consistent people didn't start with a perfect plan. They started with one decision. Make yours today.",
+      "The gap between who you are and who you want to be closes with a single action. Log your first one today.",
+      "You are here. That already separates you from the version of yourself who stayed comfortable.",
+    ],
+    nextMilestone: 3, milestoneLabel: "3-day foundation",
+  };
+  if (streakDays < 4) return {
+    word: "COMMIT", wordColor: "text-blue-400",
+    headlines: [
+      `Day ${streakDays}. The foundation is being laid.`,
+      `You showed up ${streakDays} day${streakDays > 1 ? "s" : ""}. Most people don't.`,
+      `${streakDays} day${streakDays > 1 ? "s" : ""}. This is where quitters stop.`,
+    ],
+    bodies: [
+      "The first three days are hardest. Your brain is building new neural pathways. Every action is rewiring who you are.",
+      "Most people quit before their habits have time to form. Commitment is what separates intention from identity.",
+      "You're in the window where giving up feels easiest. Push through and the resistance starts to disappear.",
+    ],
+    nextMilestone: 7, milestoneLabel: "7-day streak",
+  };
+  if (streakDays < 8) return {
+    word: "MOMENTUM", wordColor: "text-primary",
+    headlines: [
+      `${streakDays} days in. You're building real momentum.`,
+      `One week. The habit is starting to stick.`,
+      `${streakDays} consecutive days of kept promises.`,
+    ],
+    bodies: [
+      "At this stage, the behavior starts becoming automatic. You're no longer forcing it — you're becoming it.",
+      "A week of consistent action does something permanent to your identity. The person who didn't show up is fading.",
+      "Momentum is powerful because it builds on itself. Every day you continue makes tomorrow's action easier.",
+    ],
+    nextMilestone: 14, milestoneLabel: "14-day streak",
+  };
+  if (streakDays < 15) return {
+    word: "IDENTITY", wordColor: "text-violet-400",
+    headlines: [
+      `${streakDays} days. You're not the same person who started.`,
+      `Two weeks of consistency. Your identity is shifting.`,
+      `${streakDays} days of proof that you're someone who shows up.`,
+    ],
+    bodies: [
+      "At 14+ days, research shows the behavior begins to feel like part of who you are — not something you do, but someone you are.",
+      "You have two weeks of evidence that you're the person you said you'd be. That evidence is permanent.",
+      "Identity change isn't sudden — it's the accumulation of daily proof. You're 14+ days deep into a new story.",
+    ],
+    nextMilestone: 30, milestoneLabel: "30-day streak",
+  };
+  if (streakDays < 31) return {
+    word: "RARE", wordColor: "text-amber-400",
+    headlines: [
+      `${streakDays} days. You're in rare company.`,
+      `Most people only dream of a ${streakDays}-day streak.`,
+      `${streakDays} consecutive kept promises. This is who you are now.`,
+    ],
+    bodies: [
+      "Studies show fewer than 8% of people maintain a streak past two weeks. You're in that group. Own it.",
+      "At this stage, you're not building habits — you're living them. The version of you who couldn't stay consistent is a stranger now.",
+      "Your future self isn't a projection anymore. They're the logical conclusion of the evidence you've been building daily.",
+    ],
+    nextMilestone: 60, milestoneLabel: "60-day streak",
+  };
+  if (streakDays < 61) return {
+    word: "FORGED", wordColor: "text-orange-400",
+    headlines: [
+      `${streakDays} days. You've built something real.`,
+      `A 30+ day streak isn't motivation. It's identity.`,
+      `${streakDays} days. This version of you is permanent.`,
+    ],
+    bodies: [
+      "Thirty days of consistent action is not a phase — it's a new baseline. This level of discipline is now your floor, not your ceiling.",
+      "The person who started this journey couldn't have imagined being here. That's proof of transformation.",
+      "You're no longer proving something. You've already proven it. Now you're just living as who you became.",
+    ],
+    nextMilestone: 90, milestoneLabel: "90-day streak",
+  };
+  return {
+    word: "LEGEND", wordColor: "text-emerald-400",
+    headlines: [
+      `${streakDays} days. You are the rare few.`,
+      `${streakDays}-day streak. Most people never get here.`,
+      `${streakDays} days of unbroken commitment. You are forged.`,
+    ],
+    bodies: [
+      "90 days of consistent action is a life transformation, not a habit. You've rewritten who you are at a cellular level.",
+      "A 90+ day streak puts you in the top 1% of every self-improvement system ever built. This isn't motivation — it's mastery.",
+      "You didn't find motivation. You became disciplined. There's a profound difference, and you're living it.",
+    ],
+    nextMilestone: streakDays + 30, milestoneLabel: `${streakDays + 30}-day streak`,
+  };
+}
+
+function DailyBriefing({
+  firstName,
+  streakDays,
+  actionsToday,
+  alignScore,
+}: {
+  firstName: string;
+  streakDays: number;
+  actionsToday: number;
+  alignScore: number;
+}) {
+  const now = new Date();
+  const dayName = DAY_NAMES[now.getDay()];
+  const hour = now.getHours();
+  const dateKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`; // stable per day
+
+  // Use dateKey as a seed for stable-per-day variation
+  const seed = dateKey.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  const tier = getBriefingTier(streakDays);
+  const headlineIdx = seed % tier.headlines.length;
+  const bodyIdx = (seed + 1) % tier.bodies.length;
+
+  const headline = tier.headlines[headlineIdx];
+  const body = tier.bodies[bodyIdx];
+
+  // Progress to next milestone
+  const progressToNext = Math.min((streakDays / tier.nextMilestone) * 100, 100);
+
+  // Time-based opening
+  const opening = hour < 5 ? "Burning the midnight oil" : hour < 12 ? "Good morning" : hour < 17 ? "This afternoon" : hour < 20 ? "This evening" : "Tonight";
+
+  // Streak already protected today?
+  const protected_ = actionsToday > 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45 }}
+      className="rounded-2xl border border-white/8 bg-gradient-to-r from-white/[0.03] to-transparent px-5 py-5 relative overflow-hidden"
+    >
+      {/* Subtle glow */}
+      <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="flex items-start justify-between gap-4 relative z-10">
+        <div className="flex-1 min-w-0">
+          {/* Label row */}
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="w-3 h-3 text-primary/60" />
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary/60">
+              Daily Briefing · {dayName}
+            </p>
+            {protected_ && (
+              <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                <CheckCircle2 className="w-2.5 h-2.5" /> Protected
+              </span>
+            )}
+          </div>
+
+          {/* Greeting */}
+          <p className="text-xs text-muted-foreground/60 mb-1">{opening}, {firstName}.</p>
+
+          {/* Headline */}
+          <h2 className="text-lg sm:text-xl font-black text-white leading-snug mb-2">
+            {headline}
+          </h2>
+
+          {/* Body */}
+          <p className="text-sm text-muted-foreground leading-relaxed max-w-xl">
+            {body}
+          </p>
+
+          {/* Progress to next milestone */}
+          {streakDays > 0 && (
+            <div className="mt-4 flex items-center gap-3">
+              <div className="flex-1 h-1 bg-white/8 rounded-full overflow-hidden max-w-[200px]">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressToNext}%` }}
+                  transition={{ duration: 1, delay: 0.3, ease: "easeOut" }}
+                  className="h-full bg-gradient-to-r from-primary to-blue-400 rounded-full"
+                />
+              </div>
+              <span className="text-xs text-muted-foreground/60 whitespace-nowrap">
+                {streakDays}/{tier.nextMilestone} → {tier.milestoneLabel}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Word of the day badge */}
+        <div className="shrink-0 flex flex-col items-center justify-center w-20 h-20 rounded-2xl border border-white/8 bg-white/3">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-1.5 leading-none">Today</p>
+          <p className={`text-sm font-black leading-none ${tier.wordColor}`}>{tier.word}</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
 // ─── Score / streak helpers ──────────────────────────────────────────────────
 const SCORE_COLORS = [
@@ -328,6 +541,14 @@ export default function Dashboard() {
   return (
     <AppLayout>
       <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-6">
+
+        {/* Daily Briefing — personalized ASTRA message, changes every day */}
+        <DailyBriefing
+          firstName={firstName}
+          streakDays={streakDays}
+          actionsToday={actionsToday}
+          alignScore={alignScore}
+        />
 
         {/* Streak status bar */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="relative">
