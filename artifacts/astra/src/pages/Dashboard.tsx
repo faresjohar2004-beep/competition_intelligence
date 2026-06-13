@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap, Target, Trophy, Flame, Shield, Skull, ArrowRight, AlertTriangle,
   CheckCircle, Star, Dumbbell, BookOpen, Brain, Video, Leaf, DollarSign,
-  Laptop, Moon, Droplets, CheckCircle2, Sparkles,
+  Laptop, Moon, Droplets, CheckCircle2, Sparkles, X, ChevronRight,
 } from "lucide-react";
 
 // ─── Action config (shared with Actions page) ────────────────────────────────
@@ -492,6 +492,94 @@ function QuickLogSection({
   );
 }
 
+// ─── Tomorrow Preview ────────────────────────────────────────────────────────
+function TomorrowPreview({
+  firstName,
+  streakDays,
+  onDismiss,
+}: {
+  firstName: string;
+  streakDays: number;
+  onDismiss: () => void;
+}) {
+  const currentTier = getBriefingTier(streakDays);
+  const tomorrowTier = getBriefingTier(streakDays + 1);
+  const nextDay = streakDays + 1;
+  const isMilestone = [3, 7, 14, 30, 60, 90].includes(nextDay);
+  const progressPct = Math.min(((streakDays + 1) / currentTier.nextMilestone) * 100, 100);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -6, scale: 0.97 }}
+      transition={{ duration: 0.38, ease: [0.25, 0.1, 0.25, 1] }}
+      className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5 relative overflow-hidden"
+    >
+      <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="flex items-start justify-between gap-4 relative z-10">
+        <div className="flex-1 min-w-0">
+          {/* Header */}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
+              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+            </div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-400">
+              Day {streakDays} Complete · Streak Protected
+            </p>
+          </div>
+
+          {/* Headline */}
+          <h3 className="text-base sm:text-lg font-black text-white mb-1.5 leading-snug">
+            {isMilestone
+              ? `Day ${nextDay} is a milestone. Come back and claim it.`
+              : `See you tomorrow, ${firstName}.`}
+          </h3>
+
+          {/* Body */}
+          <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+            {isMilestone
+              ? `Most people never reach a ${nextDay}-day streak. You're one day away. Don't break the chain.`
+              : `Day ${nextDay} begins tomorrow. Your ${currentTier.milestoneLabel} target is within reach.`}
+          </p>
+
+          {/* Tomorrow's word + milestone progress */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/8 bg-white/4 shrink-0">
+              <Sparkles className="w-3 h-3 text-primary/60 shrink-0" />
+              <span className="text-xs text-muted-foreground">Tomorrow's word:</span>
+              <span className={`text-xs font-black ${tomorrowTier.wordColor}`}>{tomorrowTier.word}</span>
+            </div>
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              <div className="flex-1 h-1 bg-white/8 rounded-full overflow-hidden max-w-[140px]">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressPct}%` }}
+                  transition={{ duration: 0.9, delay: 0.25, ease: "easeOut" }}
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
+                />
+              </div>
+              <span className="text-xs text-muted-foreground/60 whitespace-nowrap">
+                {nextDay}/{currentTier.nextMilestone} → {currentTier.milestoneLabel}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Dismiss */}
+        <button
+          onClick={onDismiss}
+          className="shrink-0 w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors text-muted-foreground hover:text-white mt-0.5"
+          aria-label="Dismiss"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 export default function Dashboard() {
   const qc = useQueryClient();
@@ -506,6 +594,7 @@ export default function Dashboard() {
 
   const [justLogged, setJustLogged] = useState<string | null>(null);
   const [loggingType, setLoggingType] = useState<string | null>(null);
+  const [showTomorrowPreview, setShowTomorrowPreview] = useState(false);
 
   const currentSelf = futureSelves?.find((f) => f.timeframe === "current");
   const alignScore = alignment?.alignmentScore ?? 0;
@@ -524,6 +613,7 @@ export default function Dashboard() {
 
   const handleQuickLog = useCallback((type: string) => {
     if (loggingType === type) return;
+    const isFirstActionOfDay = actionsToday === 0; // capture before mutation
     setLoggingType(type);
     logAction.mutate({ data: { type } } as any, {
       onSuccess: () => {
@@ -531,12 +621,19 @@ export default function Dashboard() {
         qc.invalidateQueries({ queryKey: getGetTodayActionsQueryKey() });
         qc.invalidateQueries({ queryKey: getGetFutureSelfQueryKey() });
         qc.invalidateQueries({ queryKey: getGetUserStatsQueryKey() });
-        // Clear identity flash after 3s
-        setTimeout(() => setJustLogged(null), 3000);
+        if (isFirstActionOfDay) {
+          // After identity flash fades, show Tomorrow Preview at peak motivation
+          setTimeout(() => {
+            setJustLogged(null);
+            setShowTomorrowPreview(true);
+          }, 3200);
+        } else {
+          setTimeout(() => setJustLogged(null), 3000);
+        }
       },
       onSettled: () => setLoggingType(null),
     });
-  }, [loggingType, logAction, qc]);
+  }, [loggingType, logAction, qc, actionsToday]);
 
   return (
     <AppLayout>
@@ -554,6 +651,17 @@ export default function Dashboard() {
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="relative">
           <StreakStatusBar streakDays={streakDays} actionsToday={actionsToday} firstName={firstName} />
         </motion.div>
+
+        {/* Tomorrow Preview — fires after first action of day at peak motivation */}
+        <AnimatePresence>
+          {showTomorrowPreview && (
+            <TomorrowPreview
+              firstName={firstName}
+              streakDays={streakDays}
+              onDismiss={() => setShowTomorrowPreview(false)}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Alignment + Quick Log */}
         <motion.div
