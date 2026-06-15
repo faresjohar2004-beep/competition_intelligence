@@ -68,7 +68,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="p-6">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center font-bold text-white">A</div>
-            <span className="text-xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">ASTRA</span>
+            <span className="text-xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">ASTRA OS</span>
           </div>
         </div>
 
@@ -139,7 +139,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <header className="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 h-14 border-b border-border bg-background/90 backdrop-blur-xl">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center font-black text-white text-xs">A</div>
-          <span className="text-sm font-bold tracking-[0.18em] text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">ASTRAVITA</span>
+          <span className="text-sm font-bold tracking-[0.18em] text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">ASTRA OS</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold text-muted-foreground">{pageTitle}</span>

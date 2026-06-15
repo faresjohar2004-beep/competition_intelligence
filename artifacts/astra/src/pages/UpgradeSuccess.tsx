@@ -36,7 +36,7 @@ export default function UpgradeSuccess() {
             <span className="text-sm font-semibold text-primary uppercase tracking-wider">Welcome to Pro</span>
             <Sparkles className="h-4 w-4 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold mb-3">You're now ASTRA Pro.</h1>
+          <h1 className="text-3xl font-bold mb-3">You're now Astra OS Pro.</h1>
           <p className="text-muted-foreground mb-8">
             Every feature is unlocked. Your future self is waiting. Let's get back to building.
           </p>

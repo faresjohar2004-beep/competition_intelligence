@@ -62,7 +62,7 @@ export default function Upgrade() {
         >
           <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-4">
             <Crown className="h-4 w-4 text-primary" />
-            <span className="text-sm font-semibold text-primary">ASTRA Pro</span>
+            <span className="text-sm font-semibold text-primary">Astra OS Pro</span>
           </div>
           <h1 className="text-3xl font-bold mb-3">
             Your free trial has ended.
@@ -172,7 +172,7 @@ export default function Upgrade() {
           transition={{ delay: 0.3 }}
           className="text-center text-sm text-muted-foreground"
         >
-          Join thousands building their future selves with ASTRA Pro
+          Join thousands building their future selves with Astra OS Pro
         </motion.p>
       </div>
     </div>

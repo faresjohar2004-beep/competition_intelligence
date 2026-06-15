@@ -214,7 +214,7 @@ function CompletionScreen({
                   <Sparkles className="w-7 h-7 text-primary" />
                 </div>
               </div>
-              <p className="text-xs font-bold text-primary/60 uppercase tracking-[0.3em] mb-3">ASTRAVITA</p>
+              <p className="text-xs font-bold text-primary/60 uppercase tracking-[0.3em] mb-3">ASTRA OS</p>
               <h2 className="text-2xl font-black text-white">Building your future self…</h2>
               <p className="text-sm text-muted-foreground mt-2">Calibrating your personal path</p>
 
@@ -479,7 +479,7 @@ export default function Onboarding() {
       {/* Logo */}
       <div className="mb-8 flex items-center gap-2.5">
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center font-black text-white text-sm">A</div>
-        <span className="text-lg font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">ASTRAVITA</span>
+        <span className="text-lg font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">ASTRA OS</span>
       </div>
 
       <div className="w-full max-w-lg relative">

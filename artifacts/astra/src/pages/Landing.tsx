@@ -91,7 +91,7 @@ export default function Landing() {
         <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center font-black text-white text-xs">A</div>
-            <span className="text-sm font-bold tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">ASTRAVITA</span>
+            <span className="text-sm font-bold tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">ASTRA OS</span>
           </div>
           <Link href="/sign-in" className="text-xs font-semibold text-muted-foreground hover:text-white transition-colors px-4 py-2 rounded-lg hover:bg-white/5">
             Sign In
@@ -295,7 +295,7 @@ export default function Landing() {
               transition={{ duration: 0.5 }}
               className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight"
             >
-              How AstraVita Works
+              How Astra OS Works
             </motion.h2>
           </div>
 
@@ -389,7 +389,7 @@ export default function Landing() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="w-6 h-6 rounded-md bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center font-black text-white text-xs">A</div>
-            <span className="text-sm font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">ASTRAVITA</span>
+            <span className="text-sm font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">ASTRA OS</span>
           </div>
           <p className="text-xs text-muted-foreground/40">Built to strengthen who you are becoming.</p>
         </div>
