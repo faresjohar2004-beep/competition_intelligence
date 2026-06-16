@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import {
   useGetMe, useGetFutureSelf, useGetTodayActions, useGetCurrentChapter, useGetUserStats,
-  useLogAction,
+  useLogAction, useGetActions,
   getGetTodayActionsQueryKey, getGetFutureSelfQueryKey, getGetUserStatsQueryKey,
 } from "@workspace/api-client-react";
 import { useAlignment, useMissions } from "@/hooks/useMissions";
@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap, Target, Trophy, Flame, Shield, Skull, ArrowRight, AlertTriangle,
   CheckCircle, Star, Dumbbell, BookOpen, Brain, Video, Leaf, DollarSign,
-  Laptop, Moon, Droplets, CheckCircle2, Sparkles, X, ChevronRight,
+  Laptop, Moon, Droplets, CheckCircle2, Sparkles, X, ChevronRight, Calendar,
 } from "lucide-react";
 
 // ─── Action config (shared with Actions page) ────────────────────────────────
@@ -580,6 +580,183 @@ function TomorrowPreview({
   );
 }
 
+// ─── Weekly Scorecard ────────────────────────────────────────────────────────
+const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const WEEK_SENTENCE: Record<string, string> = {
+  workout:          "The week you chose your body over excuses.",
+  deep_work:        "The week focus became your competitive edge.",
+  learning:         "The week knowledge started compounding for you.",
+  content_creation: "The week you created more than you consumed.",
+  saving:           "The week wealth became a daily decision.",
+  reading:          "The week your mind outgrew its old limits.",
+  meditation:       "The week you commanded your own mind.",
+  sleep:            "The week you invested in your recovery.",
+  water:            "The week you started caring for the basics.",
+};
+
+function WeeklyScorecard({ allActions, streakDays }: { allActions: any[]; streakDays: number }) {
+  const todayMidnight = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const last7 = useMemo(() =>
+    Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(todayMidnight);
+      d.setDate(d.getDate() - (6 - i));
+      return d;
+    }),
+  [todayMidnight]);
+
+  const todayStr = todayMidnight.toISOString().split("T")[0];
+
+  const sevenDaysAgo = useMemo(() => {
+    const d = new Date(todayMidnight);
+    d.setDate(d.getDate() - 6);
+    return d;
+  }, [todayMidnight]);
+
+  const { weekActions, dayMap, totalThisWeek, activeDaysThisWeek, topType } = useMemo(() => {
+    const week = allActions.filter((a: any) => new Date(a.completedAt) >= sevenDaysAgo);
+    const map: Record<string, number> = {};
+    const types: Record<string, number> = {};
+    week.forEach((a: any) => {
+      const d = new Date(a.completedAt).toISOString().split("T")[0];
+      map[d] = (map[d] ?? 0) + 1;
+      types[a.type] = (types[a.type] ?? 0) + 1;
+    });
+    const top = Object.entries(types).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "workout";
+    return {
+      weekActions: week,
+      dayMap: map,
+      totalThisWeek: week.length,
+      activeDaysThisWeek: Object.values(map).filter(n => n > 0).length,
+      topType: top,
+    };
+  }, [allActions, sevenDaysAgo]);
+
+  if (totalThisWeek === 0) return null;
+
+  const perfectWeek = activeDaysThisWeek === 7;
+  const topLabel = ACTION_CONFIG.find(c => c.type === topType)?.label ?? "Workout";
+  const sentence = WEEK_SENTENCE[topType] ?? "The week you showed up.";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.35, duration: 0.5 }}
+      className={`rounded-3xl border p-6 relative overflow-hidden ${
+        perfectWeek
+          ? "border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-[#0d1017] to-[#0a0c14]"
+          : "border-white/5 bg-gradient-to-br from-[#0f0f1a] via-[#0d1017] to-[#0a0c14]"
+      }`}
+    >
+      {perfectWeek && (
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(245,158,11,0.08),transparent_60%)] pointer-events-none" />
+      )}
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+            perfectWeek
+              ? "bg-amber-500/15 border border-amber-500/30"
+              : "bg-primary/10 border border-primary/20"
+          }`}>
+            {perfectWeek
+              ? <Trophy className="w-4 h-4 text-amber-400" />
+              : <Calendar className="w-4 h-4 text-primary" />
+            }
+          </div>
+          <div>
+            <p className={`text-[10px] font-bold uppercase tracking-[0.25em] ${
+              perfectWeek ? "text-amber-400/70" : "text-primary/60"
+            }`}>
+              {perfectWeek ? "⚡ Perfect Week" : "Weekly Scorecard"}
+            </p>
+            <h3 className="text-base font-bold text-white">Last 7 Days</h3>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className={`text-3xl font-black leading-none ${perfectWeek ? "text-amber-400" : "text-white"}`}>
+            {activeDaysThisWeek}<span className="text-lg text-muted-foreground font-medium">/7</span>
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">days active</div>
+        </div>
+      </div>
+
+      {/* 7-day activity grid */}
+      <div className="flex gap-1.5 mb-5">
+        {last7.map((day, i) => {
+          const key = day.toISOString().split("T")[0];
+          const count = dayMap[key] ?? 0;
+          const isToday = key === todayStr;
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+              <span className={`text-[9px] font-bold uppercase tracking-wide ${
+                isToday ? "text-primary" : "text-muted-foreground/40"
+              }`}>
+                {DAY_SHORT[day.getDay()]}
+              </span>
+              <div className={`w-full rounded-lg flex items-center justify-center text-xs font-black py-2.5 transition-all ${
+                count > 0
+                  ? perfectWeek
+                    ? "bg-amber-500/20 border border-amber-500/40 text-amber-300"
+                    : "bg-primary/20 border border-primary/40 text-primary"
+                  : isToday
+                    ? "bg-white/5 border border-primary/20 border-dashed text-muted-foreground/30"
+                    : "bg-white/3 border border-white/5 text-muted-foreground/15"
+              }`}>
+                {count > 0 ? count : isToday ? "·" : "—"}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Stats row */}
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <Zap className="w-3.5 h-3.5 text-primary fill-primary shrink-0" />
+          <span className="text-sm font-bold text-white">{totalThisWeek}</span>
+          <span className="text-xs text-muted-foreground">actions</span>
+        </div>
+        <span className="text-white/10">·</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground">Top:</span>
+          <span className="text-sm font-bold text-white">{topLabel}</span>
+        </div>
+        {streakDays >= 7 && (
+          <>
+            <span className="text-white/10">·</span>
+            <div className="flex items-center gap-1.5">
+              <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+              <span className="text-sm font-bold text-orange-400">{streakDays}-day streak</span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Defining sentence */}
+      <div className={`px-4 py-3 rounded-xl border ${
+        perfectWeek
+          ? "border-amber-500/20 bg-amber-500/8"
+          : "border-primary/20 bg-primary/5"
+      }`}>
+        <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mb-1 ${
+          perfectWeek ? "text-amber-400/60" : "text-primary/60"
+        }`}>
+          This was
+        </p>
+        <p className="text-sm font-bold text-white leading-snug">{sentence}</p>
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 export default function Dashboard() {
   const qc = useQueryClient();
@@ -591,6 +768,9 @@ export default function Dashboard() {
   const { data: alignment, isLoading: alignLoading } = useAlignment();
   const { data: missions } = useMissions();
   const logAction = useLogAction();
+
+  const { data: allActionsRaw = [] } = useGetActions({ limit: 200 });
+  const allActions = allActionsRaw as any[];
 
   const [justLogged, setJustLogged] = useState<string | null>(null);
   const [loggingType, setLoggingType] = useState<string | null>(null);
@@ -821,6 +1001,9 @@ export default function Dashboard() {
             </Link>
           </motion.div>
         </div>
+
+        {/* Weekly Scorecard — last 7 days ritual */}
+        <WeeklyScorecard allActions={allActions} streakDays={streakDays} />
 
       </div>
     </AppLayout>
