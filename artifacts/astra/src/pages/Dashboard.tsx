@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap, Target, Trophy, Flame, Shield, Skull, ArrowRight, AlertTriangle,
   CheckCircle, Star, Dumbbell, BookOpen, Brain, Video, Leaf, DollarSign,
-  Laptop, Moon, Droplets, CheckCircle2, Sparkles, X, ChevronRight, Calendar,
+  Laptop, Moon, Droplets, CheckCircle2, Sparkles, X, ChevronRight, Calendar, Share2,
 } from "lucide-react";
 
 // ─── Action config (shared with Actions page) ────────────────────────────────
@@ -580,6 +580,146 @@ function TomorrowPreview({
   );
 }
 
+// ─── Milestone Achievement Card ──────────────────────────────────────────────
+const MILESTONE_CONFIG: Record<number, {
+  label: string; sub: string; tier: string; color: string;
+  bg: string; border: string; glow: string; shareText: string;
+}> = {
+  7:  { label: "One Week",     sub: "You're in the top 15% who make it this far.",               tier: "MOMENTUM",  color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/30",   glow: "rgba(59,130,246,0.3)",   shareText: "7 days. I kept my promise to myself every single day this week. Most people quit in 3. Building my future self on Astra OS." },
+  14: { label: "Two Weeks",    sub: "Most people have quit by now. You haven't.",                 tier: "IDENTITY",  color: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/30", glow: "rgba(139,92,246,0.3)",   shareText: "14 days straight on Astra OS. Two full weeks. I didn't miss a single day. The habit is real now." },
+  21: { label: "Three Weeks",  sub: "21 days. Science says the habit is forming.",                tier: "RARE",      color: "text-primary",    bg: "bg-primary/10",    border: "border-primary/30",    glow: "rgba(124,58,237,0.3)",   shareText: "21 days of daily action on Astra OS. Three weeks of building the person I said I'd become. It's working." },
+  30: { label: "One Month",    sub: "You're in the top 3% of people who ever try.",              tier: "FORGED",    color: "text-amber-400",  bg: "bg-amber-500/10",  border: "border-amber-500/30",  glow: "rgba(245,158,11,0.35)",  shareText: "30 days. One full month of keeping my promise to myself. I'm a different person than I was 30 days ago. Astra OS." },
+  60: { label: "Two Months",   sub: "This is no longer a habit — it's an identity.",             tier: "ELITE",     color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/30", glow: "rgba(249,115,22,0.35)",  shareText: "60 consecutive days. I started this wondering if I could last a week. I'm still here. Still building. Astra OS." },
+  90: { label: "90 Days",      sub: "Three months. This is who you are now — permanently.",      tier: "LEGEND",    color: "text-amber-300",  bg: "bg-amber-400/10",  border: "border-amber-400/30",  glow: "rgba(252,211,77,0.4)",   shareText: "90 days on Astra OS. I said I'd change. I did. This isn't discipline anymore — it's identity. Permanent." },
+};
+
+function MilestoneCard({
+  streakDays, firstName, onDismiss,
+}: { streakDays: number; firstName: string; onDismiss: () => void }) {
+  const cfg = MILESTONE_CONFIG[streakDays];
+  const [copied, setCopied] = useState(false);
+  if (!cfg) return null;
+
+  const handleShare = async () => {
+    const text = cfg.shareText;
+    if (navigator.share) {
+      try {
+        await navigator.share({ text });
+      } catch {}
+    } else {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const isGold = streakDays >= 30;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.92, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.96, y: -16 }}
+      transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+      className={`relative rounded-3xl border ${cfg.border} overflow-hidden`}
+      style={{ boxShadow: `0 0 60px ${cfg.glow}, 0 0 120px ${cfg.glow.replace("0.3", "0.12")}` }}
+    >
+      {/* Background */}
+      <div className={`absolute inset-0 ${cfg.bg}`} />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.04),transparent_60%)]" />
+      {isGold && (
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(245,158,11,0.12),transparent_50%)]" />
+      )}
+
+      <div className="relative z-10 p-6 sm:p-8">
+        {/* Dismiss */}
+        <button
+          onClick={onDismiss}
+          className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-muted-foreground hover:text-white hover:bg-white/10 transition-all"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+
+        {/* Tier badge */}
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="flex items-center gap-2 mb-4"
+        >
+          <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${cfg.border} ${cfg.bg}`}>
+            <Trophy className={`w-3.5 h-3.5 ${cfg.color}`} />
+            <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${cfg.color}`}>{cfg.tier} UNLOCKED</span>
+          </div>
+        </motion.div>
+
+        {/* Main headline */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="mb-2"
+        >
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <span className={`text-5xl sm:text-6xl font-black leading-none ${cfg.color} tabular-nums`}>
+              {streakDays}
+            </span>
+            <div>
+              <p className="text-xl font-black text-white leading-tight">Day Streak</p>
+              <p className={`text-sm font-bold ${cfg.color}`}>{cfg.label}</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Sub copy */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.35 }}
+          className="text-sm text-muted-foreground mb-6 max-w-sm"
+        >
+          {firstName}, {cfg.sub}
+        </motion.p>
+
+        {/* Identity statement */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.42 }}
+          className={`px-4 py-3 rounded-xl border ${cfg.border} ${cfg.bg} mb-6`}
+        >
+          <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mb-1 ${cfg.color} opacity-70`}>Your Identity</p>
+          <p className="text-sm font-bold text-white leading-snug">
+            You are <span className={cfg.color}>someone who keeps their word to themselves</span> — {streakDays} days of proof.
+          </p>
+        </motion.div>
+
+        {/* Share + continue */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.52 }}
+          className="flex items-center gap-3"
+        >
+          <button
+            onClick={handleShare}
+            className={`flex-1 h-11 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all border ${cfg.border} ${cfg.bg} ${cfg.color} hover:brightness-125`}
+          >
+            <Share2 className="w-4 h-4" />
+            {copied ? "Copied!" : "Share this"}
+          </button>
+          <button
+            onClick={onDismiss}
+            className="flex-1 h-11 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all"
+          >
+            Keep building <ChevronRight className="w-4 h-4" />
+          </button>
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Weekly Scorecard ────────────────────────────────────────────────────────
 const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -775,6 +915,8 @@ export default function Dashboard() {
   const [justLogged, setJustLogged] = useState<string | null>(null);
   const [loggingType, setLoggingType] = useState<string | null>(null);
   const [showTomorrowPreview, setShowTomorrowPreview] = useState(false);
+  const [showMilestoneCard, setShowMilestoneCard] = useState(false);
+  const [milestoneStreak, setMilestoneStreak] = useState(0);
 
   const currentSelf = futureSelves?.find((f) => f.timeframe === "current");
   const alignScore = alignment?.alignmentScore ?? 0;
@@ -791,9 +933,13 @@ export default function Dashboard() {
     ? [missions.criticalCompleted, missions.secondary1Completed, missions.secondary2Completed, missions.secondary3Completed, missions.courageCompleted].filter(Boolean).length
     : 0;
 
+  const STREAK_MILESTONES = [7, 14, 21, 30, 60, 90];
+
   const handleQuickLog = useCallback((type: string) => {
     if (loggingType === type) return;
-    const isFirstActionOfDay = actionsToday === 0; // capture before mutation
+    const isFirstActionOfDay = actionsToday === 0;
+    const potentialStreak = streakDays + 1;
+    const isMilestone = isFirstActionOfDay && STREAK_MILESTONES.includes(potentialStreak);
     setLoggingType(type);
     logAction.mutate({ data: { type } } as any, {
       onSuccess: () => {
@@ -802,10 +948,14 @@ export default function Dashboard() {
         qc.invalidateQueries({ queryKey: getGetFutureSelfQueryKey() });
         qc.invalidateQueries({ queryKey: getGetUserStatsQueryKey() });
         if (isFirstActionOfDay) {
-          // After identity flash fades, show Tomorrow Preview at peak motivation
           setTimeout(() => {
             setJustLogged(null);
-            setShowTomorrowPreview(true);
+            if (isMilestone) {
+              setMilestoneStreak(potentialStreak);
+              setShowMilestoneCard(true);
+            } else {
+              setShowTomorrowPreview(true);
+            }
           }, 3200);
         } else {
           setTimeout(() => setJustLogged(null), 3000);
@@ -813,7 +963,7 @@ export default function Dashboard() {
       },
       onSettled: () => setLoggingType(null),
     });
-  }, [loggingType, logAction, qc, actionsToday]);
+  }, [loggingType, logAction, qc, actionsToday, streakDays]);
 
   return (
     <AppLayout>
@@ -832,7 +982,18 @@ export default function Dashboard() {
           <StreakStatusBar streakDays={streakDays} actionsToday={actionsToday} firstName={firstName} />
         </motion.div>
 
-        {/* Tomorrow Preview — fires after first action of day at peak motivation */}
+        {/* Milestone Achievement Card — fires on streak milestones at peak motivation */}
+        <AnimatePresence>
+          {showMilestoneCard && (
+            <MilestoneCard
+              streakDays={milestoneStreak}
+              firstName={firstName}
+              onDismiss={() => setShowMilestoneCard(false)}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Tomorrow Preview — fires after first action of non-milestone day */}
         <AnimatePresence>
           {showTomorrowPreview && (
             <TomorrowPreview
