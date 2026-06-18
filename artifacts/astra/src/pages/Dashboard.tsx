@@ -580,6 +580,98 @@ function TomorrowPreview({
   );
 }
 
+// ─── Today's Evidence Strip ──────────────────────────────────────────────────
+function TodayEvidenceStrip({ actions }: { actions: any[] }) {
+  const shown = actions.slice(0, 6);
+  const overflow = actions.length - 6;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.1 }}
+      className="rounded-3xl border border-white/5 bg-gradient-to-br from-[#0f0f1a] via-[#0d1017] to-[#0a0c14] p-6 relative overflow-hidden"
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_0%,rgba(124,58,237,0.08),transparent_60%)]" />
+      <div className="relative z-10">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center">
+              <Shield className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.3em] font-bold text-primary/60">Today's Evidence</p>
+              <p className="text-xs font-bold text-white leading-none mt-0.5">
+                {actions.length === 0 ? "No promises kept yet" : `${actions.length} promise${actions.length !== 1 ? "s" : ""} kept today`}
+              </p>
+            </div>
+          </div>
+          <Link href="/evidence" className="text-xs font-bold text-primary/60 hover:text-primary transition-colors flex items-center gap-1">
+            View all <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
+
+        {/* Empty state */}
+        {actions.length === 0 && (
+          <div className="flex items-center gap-4 p-4 rounded-2xl border border-dashed border-white/8">
+            <div className="w-9 h-9 rounded-xl bg-white/3 border border-dashed border-white/10 flex items-center justify-center shrink-0">
+              <Zap className="w-4 h-4 text-white/20" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white/30">Your first action becomes permanent proof.</p>
+              <p className="text-xs text-white/20 mt-0.5">Every log here is evidence of who you're becoming.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Action chips */}
+        {actions.length > 0 && (
+          <div className="space-y-2">
+            <AnimatePresence initial={false}>
+              {shown.map((action: any, i: number) => {
+                const cfg = ACTION_CONFIG.find((a) => a.type === action.type) ?? ACTION_CONFIG[0];
+                const Icon = cfg.icon;
+                const clr = COLOR_MAP[cfg.color] ?? COLOR_MAP["indigo"];
+                const time = new Date(action.loggedAt ?? action.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+                return (
+                  <motion.div
+                    key={action.id ?? i}
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 12 }}
+                    transition={{ duration: 0.3, delay: i * 0.04 }}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl border ${clr.border} ${clr.bg} group`}
+                  >
+                    <div className={`shrink-0 w-8 h-8 rounded-xl ${clr.bg} border ${clr.border} flex items-center justify-center`}>
+                      <Icon className={`w-4 h-4 ${clr.text}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-black uppercase tracking-wide ${clr.text}`}>{cfg.label}</span>
+                        <span className="text-[10px] text-white/25 font-medium">{time}</span>
+                      </div>
+                      <p className="text-[11px] text-white/40 leading-tight truncate">{cfg.identity}</p>
+                    </div>
+                    <CheckCircle2 className={`w-4 h-4 ${clr.text} shrink-0 opacity-70`} />
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+
+            {overflow > 0 && (
+              <Link href="/evidence" className={`flex items-center justify-center gap-2 py-2.5 rounded-2xl border border-white/8 bg-white/2 hover:bg-white/5 transition-all`}>
+                <span className="text-xs font-bold text-white/40">+{overflow} more in Evidence Vault</span>
+                <ChevronRight className="w-3 h-3 text-white/30" />
+              </Link>
+            )}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Milestone Achievement Card ──────────────────────────────────────────────
 const MILESTONE_CONFIG: Record<number, {
   label: string; sub: string; tier: string; color: string;
@@ -1063,6 +1155,9 @@ export default function Dashboard() {
             </div>
           </div>
         </motion.div>
+
+        {/* Today's Evidence Strip — inline proof on the main screen */}
+        <TodayEvidenceStrip actions={todayActions?.actions ?? []} />
 
         {/* Quick cards row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
