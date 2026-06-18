@@ -8,3 +8,4 @@ export * from "./biography";
 export * from "./coaching";
 export * from "./missions";
 export * from "./milestones";
+export * from "./pushSubscriptions";

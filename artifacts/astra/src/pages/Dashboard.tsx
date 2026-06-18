@@ -1,4 +1,5 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import AppLayout from "@/components/layout/AppLayout";
 import {
   useGetMe, useGetFutureSelf, useGetTodayActions, useGetCurrentChapter, useGetUserStats,
@@ -12,7 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap, Target, Trophy, Flame, Shield, Skull, ArrowRight, AlertTriangle,
   CheckCircle, Star, Dumbbell, BookOpen, Brain, Video, Leaf, DollarSign,
-  Laptop, Moon, Droplets, CheckCircle2, Sparkles, X, ChevronRight, Calendar, Share2,
+  Laptop, Moon, Droplets, CheckCircle2, Sparkles, X, ChevronRight, Calendar, Share2, Bell, BellOff,
 } from "lucide-react";
 
 // ─── Action config (shared with Actions page) ────────────────────────────────
@@ -574,6 +575,62 @@ function TomorrowPreview({
           aria-label="Dismiss"
         >
           <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Notification Permission Banner ──────────────────────────────────────────
+const NOTIF_DISMISS_KEY = "astra_notif_banner_dismissed";
+
+function NotificationPermissionBanner({ streakDays }: { streakDays: number }) {
+  const { permission, loading, subscribed, isSupported, subscribe } = usePushNotifications();
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem(NOTIF_DISMISS_KEY) === "1"; } catch { return false; }
+  });
+
+  const dismiss = useCallback(() => {
+    try { localStorage.setItem(NOTIF_DISMISS_KEY, "1"); } catch {}
+    setDismissed(true);
+  }, []);
+
+  // Only show when: supported, streak ≥ 1, not yet asked, not dismissed, not subscribed
+  if (!isSupported || dismissed || subscribed || permission === "granted" || permission === "denied") return null;
+  if (streakDays < 1) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.4 }}
+      className="rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 flex items-center gap-4"
+    >
+      <div className="shrink-0 w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+        <Bell className="w-4 h-4 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-white leading-tight">
+          Protect your {streakDays}-day streak
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Get a reminder at 8pm if you haven't logged yet.
+        </p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={subscribe}
+          disabled={loading}
+          className="h-8 px-4 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/80 transition-all disabled:opacity-50"
+        >
+          {loading ? "Enabling…" : "Enable"}
+        </button>
+        <button
+          onClick={dismiss}
+          className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-muted-foreground hover:text-white transition-all"
+        >
+          <X className="w-3 h-3" />
         </button>
       </div>
     </motion.div>
@@ -1158,6 +1215,11 @@ export default function Dashboard() {
 
         {/* Today's Evidence Strip — inline proof on the main screen */}
         <TodayEvidenceStrip actions={todayActions?.actions ?? []} />
+
+        {/* Notification permission — soft banner, only shows when streak ≥ 1 and not yet asked */}
+        <AnimatePresence>
+          <NotificationPermissionBanner streakDays={streakDays} />
+        </AnimatePresence>
 
         {/* Quick cards row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">

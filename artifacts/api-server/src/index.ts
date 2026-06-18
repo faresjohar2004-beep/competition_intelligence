@@ -2,6 +2,8 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./lib/stripeClient";
+import cron from "node-cron";
+import { sendDailyReminders } from "./routes/push";
 
 async function initStripe() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -42,6 +44,12 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 await initStripe();
+
+// ─── Daily 8pm UTC reminder — sends push notification to users who haven't logged ─
+cron.schedule("0 20 * * *", () => {
+  logger.info("Running daily push reminder job (8pm UTC)");
+  sendDailyReminders().catch((err) => logger.error({ err }, "Push reminder job failed"));
+});
 
 app.listen(port, (err) => {
   if (err) {

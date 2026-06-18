@@ -13,6 +13,7 @@ import sharingRouter from "./sharing";
 import adminRouter from "./admin";
 import missionsRouter from "./missions";
 import stripeRouter from "./stripe";
+import pushRouter from "./push";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use("/sharing", sharingRouter);
 router.use("/admin", adminRouter);
 router.use("/missions", missionsRouter);
 router.use("/stripe", stripeRouter);
+router.use("/push", pushRouter);
 
 export default router;
