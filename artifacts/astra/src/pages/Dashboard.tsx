@@ -3,7 +3,7 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 import AppLayout from "@/components/layout/AppLayout";
 import {
   useGetMe, useGetFutureSelf, useGetTodayActions, useGetCurrentChapter, useGetUserStats,
-  useLogAction, useGetActions,
+  useLogAction, useGetActions, useUpdateMe, getGetMeQueryKey,
   getGetTodayActionsQueryKey, getGetFutureSelfQueryKey, getGetUserStatsQueryKey,
 } from "@workspace/api-client-react";
 import { useAlignment, useMissions } from "@/hooks/useMissions";
@@ -159,11 +159,13 @@ function DailyBriefing({
   streakDays,
   actionsToday,
   alignScore,
+  tomorrowPromise,
 }: {
   firstName: string;
   streakDays: number;
   actionsToday: number;
   alignScore: number;
+  tomorrowPromise?: string | null;
 }) {
   const now = new Date();
   const dayName = DAY_NAMES[now.getDay()];
@@ -225,6 +227,24 @@ function DailyBriefing({
           <p className="text-sm text-muted-foreground leading-relaxed max-w-xl">
             {body}
           </p>
+
+          {/* Yesterday's Promise callout — shows before first action of day */}
+          {tomorrowPromise && actionsToday === 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mt-3 flex items-start gap-2.5 px-3 py-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5"
+            >
+              <div className="shrink-0 w-4 h-4 rounded-full bg-emerald-500/25 border border-emerald-500/35 flex items-center justify-center mt-0.5">
+                <ArrowRight className="w-2 h-2 text-emerald-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400/60 mb-0.5">Yesterday's Promise</p>
+                <p className="text-sm font-bold text-white leading-snug">{tomorrowPromise}</p>
+              </div>
+            </motion.div>
+          )}
 
           {/* Progress to next milestone */}
           {streakDays > 0 && (
@@ -498,10 +518,12 @@ function TomorrowPreview({
   firstName,
   streakDays,
   onDismiss,
+  onSavePromise,
 }: {
   firstName: string;
   streakDays: number;
   onDismiss: () => void;
+  onSavePromise: (promise: string) => void;
 }) {
   const currentTier = getBriefingTier(streakDays);
   const tomorrowTier = getBriefingTier(streakDays + 1);
@@ -566,6 +588,9 @@ function TomorrowPreview({
               </span>
             </div>
           </div>
+
+          {/* ── Tomorrow's Promise input ── */}
+          <PromiseInput onSave={onSavePromise} onSkip={onDismiss} />
         </div>
 
         {/* Dismiss */}
@@ -577,6 +602,68 @@ function TomorrowPreview({
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
+    </motion.div>
+  );
+}
+
+function PromiseInput({ onSave, onSkip }: { onSave: (p: string) => void; onSkip: () => void }) {
+  const [value, setValue] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = () => {
+    if (!value.trim()) return;
+    setSaved(true);
+    onSave(value.trim());
+    setTimeout(onSkip, 800);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3, duration: 0.35 }}
+      className="mt-4 pt-4 border-t border-emerald-500/15"
+    >
+      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-400/60 mb-2">
+        Tomorrow's Promise
+      </p>
+      {saved ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex items-center gap-2 text-emerald-400"
+        >
+          <CheckCircle2 className="w-4 h-4" />
+          <span className="text-sm font-bold">Promise saved. See you tomorrow.</span>
+        </motion.div>
+      ) : (
+        <div className="flex gap-2">
+          <input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSave()}
+            placeholder="e.g. workout at 7am, read for 20 minutes…"
+            maxLength={120}
+            autoFocus
+            className="flex-1 h-9 px-3 rounded-xl bg-black/20 border border-emerald-500/20 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-500/40 transition-colors min-w-0"
+          />
+          <button
+            onClick={handleSave}
+            disabled={!value.trim()}
+            className="h-9 px-3 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 text-xs font-bold hover:bg-emerald-500/25 transition-all disabled:opacity-30 shrink-0 whitespace-nowrap"
+          >
+            Promise →
+          </button>
+        </div>
+      )}
+      {!saved && (
+        <button
+          onClick={onSkip}
+          className="mt-1.5 text-[11px] text-white/20 hover:text-white/40 transition-colors"
+        >
+          Skip for now
+        </button>
+      )}
     </motion.div>
   );
 }
@@ -1057,6 +1144,7 @@ export default function Dashboard() {
   const { data: alignment, isLoading: alignLoading } = useAlignment();
   const { data: missions } = useMissions();
   const logAction = useLogAction();
+  const updateMe = useUpdateMe();
 
   const { data: allActionsRaw = [] } = useGetActions({ limit: 200 });
   const allActions = allActionsRaw as any[];
@@ -1066,6 +1154,15 @@ export default function Dashboard() {
   const [showTomorrowPreview, setShowTomorrowPreview] = useState(false);
   const [showMilestoneCard, setShowMilestoneCard] = useState(false);
   const [milestoneStreak, setMilestoneStreak] = useState(0);
+
+  const tomorrowPromise = (user as any)?.tomorrowPromise as string | null | undefined;
+
+  const savePromise = useCallback((promise: string) => {
+    updateMe.mutate({ data: { tomorrowPromise: promise } } as any, {
+      onSuccess: () => qc.invalidateQueries({ queryKey: getGetMeQueryKey() }),
+    });
+    setShowTomorrowPreview(false);
+  }, [updateMe, qc]);
 
   const currentSelf = futureSelves?.find((f) => f.timeframe === "current");
   const alignScore = alignment?.alignmentScore ?? 0;
@@ -1096,6 +1193,12 @@ export default function Dashboard() {
         qc.invalidateQueries({ queryKey: getGetTodayActionsQueryKey() });
         qc.invalidateQueries({ queryKey: getGetFutureSelfQueryKey() });
         qc.invalidateQueries({ queryKey: getGetUserStatsQueryKey() });
+        // Clear yesterday's promise once they start acting on it
+        if (actionsToday === 0 && tomorrowPromise) {
+          updateMe.mutate({ data: { tomorrowPromise: "" } } as any, {
+            onSuccess: () => qc.invalidateQueries({ queryKey: getGetMeQueryKey() }),
+          });
+        }
         if (isFirstActionOfDay) {
           setTimeout(() => {
             setJustLogged(null);
@@ -1124,6 +1227,7 @@ export default function Dashboard() {
           streakDays={streakDays}
           actionsToday={actionsToday}
           alignScore={alignScore}
+          tomorrowPromise={tomorrowPromise}
         />
 
         {/* Streak status bar */}
@@ -1149,6 +1253,7 @@ export default function Dashboard() {
               firstName={firstName}
               streakDays={streakDays}
               onDismiss={() => setShowTomorrowPreview(false)}
+              onSavePromise={savePromise}
             />
           )}
         </AnimatePresence>

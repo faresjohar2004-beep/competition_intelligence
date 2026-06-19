@@ -21,7 +21,7 @@ router.get("/me", requireAuth, async (req, res) => {
 // PATCH /api/users/me
 router.patch("/me", requireAuthWithUser, async (req, res) => {
   const user = (req as any).user;
-  const { name, career, mainGoals, biggestStruggles } = req.body;
+  const { name, career, mainGoals, biggestStruggles, tomorrowPromise } = req.body;
   const [updated] = await db
     .update(usersTable)
     .set({
@@ -29,6 +29,8 @@ router.patch("/me", requireAuthWithUser, async (req, res) => {
       ...(career && { career }),
       ...(mainGoals && { mainGoals }),
       ...(biggestStruggles && { biggestStruggles }),
+      // Allow explicit null/empty to clear the promise, or a new string to set it
+      ...(tomorrowPromise !== undefined && { tomorrowPromise: tomorrowPromise || null }),
       updatedAt: new Date(),
     })
     .where(eq(usersTable.id, user.id))
