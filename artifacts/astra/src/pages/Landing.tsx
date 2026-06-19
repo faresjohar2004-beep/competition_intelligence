@@ -137,10 +137,13 @@ export default function Landing() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.25 }}
-            className="flex flex-col items-center gap-0.5 mb-10"
+            className="flex items-center justify-center gap-4 mb-10"
           >
-            {["One action.", "One promise.", "One day at a time."].map((line, i) => (
-              <p key={i} className="text-lg text-muted-foreground font-medium">{line}</p>
+            {["Daily actions.", "Identity tracking.", "AI guidance."].map((line, i) => (
+              <React.Fragment key={i}>
+                <p className="text-base sm:text-lg text-muted-foreground font-medium">{line}</p>
+                {i < 2 && <span className="w-1 h-1 rounded-full bg-muted-foreground/30 shrink-0" />}
+              </React.Fragment>
             ))}
           </motion.div>
 
@@ -235,6 +238,85 @@ export default function Landing() {
         </motion.div>
       </section>
 
+      {/* ── SECTION: Not a task manager ── */}
+      <section className="py-20 px-5 border-y border-white/5 bg-white/[0.012]">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-12"
+          >
+            <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary/60 mb-4">Competitive Positioning</p>
+            <h2 className="text-3xl sm:text-4xl font-black text-white mb-3 leading-tight">
+              Not a task manager.<br />
+              <span className="bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">
+                An OS for identity change.
+              </span>
+            </h2>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              Most apps help you do more. Astra OS helps you become someone.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              {
+                them: "Habit trackers",
+                themSub: "tell you what you did",
+                us: "Astra OS",
+                usSub: "shows you who you're becoming",
+                delay: 0,
+              },
+              {
+                them: "Productivity apps",
+                themSub: "manage your schedule",
+                us: "Astra OS",
+                usSub: "builds your identity",
+                delay: 0.08,
+              },
+              {
+                them: "Self-help newsletters",
+                themSub: "give you advice",
+                us: "Astra OS",
+                usSub: "creates evidence you act on it",
+                delay: 0.16,
+              },
+            ].map(({ them, themSub, us, usSub, delay }) => (
+              <motion.div
+                key={them}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.45, delay }}
+                className="rounded-2xl border border-white/8 bg-white/3 p-5 space-y-3"
+              >
+                <div className="space-y-0.5 opacity-50">
+                  <p className="text-xs font-bold text-white line-through decoration-white/40">{them}</p>
+                  <p className="text-xs text-muted-foreground">{themSub}</p>
+                </div>
+                <div className="w-full h-px bg-white/8" />
+                <div className="space-y-0.5">
+                  <p className="text-xs font-black text-primary">{us}</p>
+                  <p className="text-xs text-white font-medium">{usSub}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.p
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            className="text-center text-xs text-muted-foreground/40 mt-8 font-medium"
+          >
+            Every feature answers one question: "Does this help you become who you said you'd be?"
+          </motion.p>
+        </div>
+      </section>
+
       {/* ── SECTION 2: Three Pillars ── */}
       <section className="py-28 px-5 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,rgba(124,58,237,0.06),transparent)] pointer-events-none" />
@@ -307,10 +389,11 @@ export default function Landing() {
             className="max-w-lg mx-auto"
           >
             <Step n={1} title="Make a Promise" sub="Define who you want to become. Set your daily commitment — small, achievable, and aligned with your future self." />
-            <Step n={2} title="Complete Today's Action" sub="One high-leverage action per day. No overwhelm. Just the thing that moves the needle most." />
-            <Step n={3} title="Collect Evidence" sub="Every completed action becomes proof in your Evidence Vault. You are becoming who you said you'd be." />
-            <Step n={4} title="Strengthen Identity" sub="ASTRA shows you who you're becoming in real-time — with scores, projections, and letters from your future self." />
-            <Step n={5} title="Return Tomorrow" last sub="Your streak grows. Your alignment score rises. Your future self becomes more real every single day." />
+            <Step n={2} title="Take Action" sub="One high-leverage action per day. No overwhelm. Just the thing that moves the needle most toward your future identity." />
+            <Step n={3} title="Collect Evidence" sub="Every completed action is stored permanently in your Evidence Vault. This vault never lies — and neither do you." />
+            <Step n={4} title="Increase Future Alignment" sub="Your alignment score rises with every action. Watch the gap between who you are and who you're becoming close in real time." />
+            <Step n={5} title="Reflect & Strengthen Identity" sub="Daily reflection deepens self-awareness. Know exactly who you proved yourself to be today — and build on it tomorrow." />
+            <Step n={6} title="Return Tomorrow" last sub="Your streak grows. Your identity compounds. The person you're becoming is more real with every passing day." />
           </motion.div>
         </div>
       </section>

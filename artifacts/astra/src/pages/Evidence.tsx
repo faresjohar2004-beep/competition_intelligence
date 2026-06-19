@@ -1,6 +1,7 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { useGetActions, useGetUserStats, useGetTodayActions } from "@workspace/api-client-react";
 import { motion } from "framer-motion";
+import React from "react";
 import {
   Shield, Flame, CheckCircle2, Dumbbell, BookOpen, Brain, Video,
   Leaf, DollarSign, Laptop, Moon, Droplets, TrendingUp, Calendar,
@@ -15,6 +16,7 @@ const ACTION_DISPLAY: Record<string, {
   border: string;
   identity: string;
 }> = {
+  reflection:       { label: "Reflection",       icon: BookOpen,   color: "text-primary/80",  bg: "bg-primary/10",     border: "border-primary/20",    identity: "You are someone who knows themselves deeply enough to grow." },
   workout:          { label: "Workout",          icon: Dumbbell,   color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", identity: "You are someone who refuses to let their body fail them." },
   reading:          { label: "Reading",          icon: BookOpen,   color: "text-violet-400",  bg: "bg-violet-500/10",  border: "border-violet-500/20",  identity: "You are someone who never stops growing." },
   learning:         { label: "Learning",         icon: Brain,      color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20",    identity: "You are someone who invests in their future every single day." },

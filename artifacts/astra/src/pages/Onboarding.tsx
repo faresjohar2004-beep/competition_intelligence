@@ -442,6 +442,8 @@ export default function Onboarding() {
                           : area === "business"   ? "Learning, deep work, financial tracking"
                           : area === "discipline" ? "Morning routines, journaling, focus blocks"
                           : "Reading, working out, meditation, deep work",
+          currentIdentity:  `I am becoming someone who ${AREA_IDENTITY?.[area] ?? "shows up every day and keeps their promises"}.`,
+          desiredIdentity:  AREA_GOALS?.[area] ?? "Grow and improve every area of my life",
         },
       },
       { onSuccess: () => setShowCompletion(true) }

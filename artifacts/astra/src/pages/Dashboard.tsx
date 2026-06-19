@@ -12,7 +12,7 @@ import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap, Target, Trophy, Flame, Shield, Skull, ArrowRight, AlertTriangle,
-  CheckCircle, Star, Dumbbell, BookOpen, Brain, Video, Leaf, DollarSign,
+  CheckCircle, Star, Dumbbell, BookOpen, Brain, Video, Leaf, DollarSign, PenLine,
   Laptop, Moon, Droplets, CheckCircle2, Sparkles, X, ChevronRight, Calendar, Share2, Bell, BellOff,
 } from "lucide-react";
 
@@ -1170,6 +1170,21 @@ export default function Dashboard() {
   const firstName = user?.name?.split(" ")[0] ?? "Explorer";
   const streakDays = stats?.streakDays ?? 0;
   const actionsToday = todayActions?.actions?.length ?? 0;
+
+  const CAREER_TO_IDENTITY: Record<string, string> = {
+    "Mindset & Discipline":       "someone who shows up when it's hard",
+    "Health & Fitness":           "someone who takes relentless care of their body",
+    "Productivity & Focus":       "someone who masters their attention",
+    "Habits & Consistency":       "someone who keeps every promise they make",
+    "Education & Growth":         "someone who never stops growing",
+    "Finance & Entrepreneurship": "someone who builds their own path",
+    "Personal Growth":            "someone who is always evolving",
+  };
+  const identityStatement: string | null =
+    (user as any)?.currentIdentity ??
+    ((user as any)?.career
+      ? `I am becoming ${CAREER_TO_IDENTITY[(user as any).career] ?? "someone who shows up every day"}.`
+      : null);
   const loggedTypes = useMemo(
     () => new Set((todayActions?.actions ?? []).map((a: any) => a.type)),
     [todayActions],
@@ -1229,6 +1244,28 @@ export default function Dashboard() {
           alignScore={alignScore}
           tomorrowPromise={tomorrowPromise}
         />
+
+        {/* Identity Statement Strip */}
+        {identityStatement && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl border border-primary/15 bg-primary/5"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-primary/60 shrink-0" />
+            <p className="flex-1 text-sm font-medium text-white/75 truncate italic">
+              "{identityStatement}"
+            </p>
+            <Link
+              href="/reflections"
+              className="flex items-center gap-1.5 text-xs font-bold text-primary/60 hover:text-primary transition-colors shrink-0 whitespace-nowrap"
+            >
+              <PenLine className="w-3 h-3" />
+              Reflect
+            </Link>
+          </motion.div>
+        )}
 
         {/* Streak status bar */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="relative">
