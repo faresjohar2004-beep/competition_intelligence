@@ -517,19 +517,23 @@ function QuickLogSection({
 function TomorrowPreview({
   firstName,
   streakDays,
+  lastActionType,
   onDismiss,
   onSavePromise,
 }: {
   firstName: string;
   streakDays: number;
+  lastActionType: string | null;
   onDismiss: () => void;
   onSavePromise: (promise: string) => void;
 }) {
+  const [phase, setPhase] = useState<"celebrate" | "commit">("celebrate");
   const currentTier = getBriefingTier(streakDays);
   const tomorrowTier = getBriefingTier(streakDays + 1);
   const nextDay = streakDays + 1;
   const isMilestone = [3, 7, 14, 30, 60, 90].includes(nextDay);
   const progressPct = Math.min(((streakDays + 1) / currentTier.nextMilestone) * 100, 100);
+  const lastAction = ACTION_CONFIG.find((a) => a.type === lastActionType);
 
   return (
     <motion.div
@@ -539,61 +543,138 @@ function TomorrowPreview({
       transition={{ duration: 0.38, ease: [0.25, 0.1, 0.25, 1] }}
       className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5 relative overflow-hidden"
     >
-      <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+      {/* Glow */}
+      <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/6 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-emerald-400/4 rounded-full blur-2xl pointer-events-none" />
 
       <div className="flex items-start justify-between gap-4 relative z-10">
         <div className="flex-1 min-w-0">
-          {/* Header */}
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
-              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-            </div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-400">
-              Day {streakDays} Complete · Streak Protected
-            </p>
-          </div>
+          <AnimatePresence mode="wait">
 
-          {/* Headline */}
-          <h3 className="text-base sm:text-lg font-black text-white mb-1.5 leading-snug">
-            {isMilestone
-              ? `Day ${nextDay} is a milestone. Come back and claim it.`
-              : `See you tomorrow, ${firstName}.`}
-          </h3>
+            {/* ── PHASE 1: Identity Confirmation ── */}
+            {phase === "celebrate" && (
+              <motion.div
+                key="celebrate"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.28 }}
+              >
+                {/* Header chip */}
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  </div>
+                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-400">
+                    Day {streakDays} — Identity Confirmed
+                  </p>
+                </div>
 
-          {/* Body */}
-          <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-            {isMilestone
-              ? `Most people never reach a ${nextDay}-day streak. You're one day away. Don't break the chain.`
-              : `Day ${nextDay} begins tomorrow. Your ${currentTier.milestoneLabel} target is within reach.`}
-          </p>
+                {/* Headline — celebration not farewell */}
+                <h3 className="text-lg sm:text-xl font-black text-white mb-2 leading-snug">
+                  {isMilestone
+                    ? `Day ${nextDay} is a milestone. Come back and claim it.`
+                    : `You just proved it, ${firstName}.`}
+                </h3>
 
-          {/* Tomorrow's word + milestone progress */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/8 bg-white/4 shrink-0">
-              <Sparkles className="w-3 h-3 text-primary/60 shrink-0" />
-              <span className="text-xs text-muted-foreground">Tomorrow's word:</span>
-              <span className={`text-xs font-black ${tomorrowTier.wordColor}`}>{tomorrowTier.word}</span>
-            </div>
-            <div className="flex items-center gap-2.5 flex-1 min-w-0">
-              <div className="flex-1 h-1 bg-white/8 rounded-full overflow-hidden max-w-[140px]">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progressPct}%` }}
-                  transition={{ duration: 0.9, delay: 0.25, ease: "easeOut" }}
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
-                />
-              </div>
-              <span className="text-xs text-muted-foreground/60 whitespace-nowrap">
-                {nextDay}/{currentTier.nextMilestone} → {currentTier.milestoneLabel}
-              </span>
-            </div>
-          </div>
+                {/* Identity statement — what they confirmed today */}
+                {lastAction ? (
+                  <p className="text-sm text-emerald-300/80 font-semibold italic mb-4 leading-relaxed">
+                    "{lastAction.identity}"
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                    {isMilestone
+                      ? `Most people never reach a ${nextDay}-day streak. You're one day away. Don't break the chain.`
+                      : `That action is now permanent evidence. Your future self is watching.`}
+                  </p>
+                )}
 
-          {/* ── Tomorrow's Promise input ── */}
-          <PromiseInput onSave={onSavePromise} onSkip={onDismiss} />
+                {/* Streak + progress row */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-5">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/8 bg-white/4 shrink-0">
+                    <Flame className="w-3 h-3 text-orange-400 shrink-0" />
+                    <span className="text-xs font-black text-orange-400">{streakDays}</span>
+                    <span className="text-xs text-muted-foreground">day streak</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <div className="flex-1 h-1 bg-white/8 rounded-full overflow-hidden max-w-[140px]">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progressPct}%` }}
+                        transition={{ duration: 0.9, delay: 0.2, ease: "easeOut" }}
+                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground/60 whitespace-nowrap">
+                      {nextDay}/{currentTier.nextMilestone} → {currentTier.milestoneLabel}
+                    </span>
+                  </div>
+                </div>
+
+                {/* CTA: advance to commitment */}
+                <button
+                  onClick={() => setPhase("commit")}
+                  className="w-full h-11 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-sm font-bold hover:bg-emerald-500/25 transition-all flex items-center justify-center gap-2"
+                >
+                  Seal tomorrow
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={onDismiss}
+                  className="mt-2 w-full text-center text-[11px] text-white/18 hover:text-white/35 transition-colors"
+                >
+                  Skip — no commitment today
+                </button>
+              </motion.div>
+            )}
+
+            {/* ── PHASE 2: Tomorrow's Commitment ── */}
+            {phase === "commit" && (
+              <motion.div
+                key="commit"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.28 }}
+              >
+                {/* Header */}
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-5 h-5 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center">
+                    <Sparkles className="w-3 h-3 text-primary" />
+                  </div>
+                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary/70">
+                    Tomorrow's Promise
+                  </p>
+                </div>
+
+                <h3 className="text-base sm:text-lg font-black text-white mb-1.5 leading-snug">
+                  {isMilestone
+                    ? `Day ${nextDay} is a milestone. Name your action.`
+                    : `One commitment. One line.`}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {isMilestone
+                    ? `You're one day from ${currentTier.milestoneLabel}. What will you do to claim it?`
+                    : `People who write tomorrow's action are 3× more likely to do it. What will you do?`}
+                </p>
+
+                {/* Tomorrow's word chip */}
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/8 bg-white/4 mb-4 w-fit">
+                  <Sparkles className="w-3 h-3 text-primary/60 shrink-0" />
+                  <span className="text-xs text-muted-foreground">Tomorrow's word:</span>
+                  <span className={`text-xs font-black ${tomorrowTier.wordColor}`}>{tomorrowTier.word}</span>
+                </div>
+
+                <PromiseInput onSave={onSavePromise} onSkip={onDismiss} />
+              </motion.div>
+            )}
+
+          </AnimatePresence>
         </div>
 
-        {/* Dismiss */}
+        {/* Dismiss X */}
         <button
           onClick={onDismiss}
           className="shrink-0 w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors text-muted-foreground hover:text-white mt-0.5"
@@ -659,9 +740,9 @@ function PromiseInput({ onSave, onSkip }: { onSave: (p: string) => void; onSkip:
       {!saved && (
         <button
           onClick={onSkip}
-          className="mt-1.5 text-[11px] text-white/20 hover:text-white/40 transition-colors"
+          className="mt-1.5 text-[11px] text-white/20 hover:text-white/35 transition-colors"
         >
-          Skip for now
+          I'll commit tomorrow
         </button>
       )}
     </motion.div>
@@ -1150,6 +1231,7 @@ export default function Dashboard() {
   const allActions = allActionsRaw as any[];
 
   const [justLogged, setJustLogged] = useState<string | null>(null);
+  const [lastActionType, setLastActionType] = useState<string | null>(null);
   const [loggingType, setLoggingType] = useState<string | null>(null);
   const [showTomorrowPreview, setShowTomorrowPreview] = useState(false);
   const [showMilestoneCard, setShowMilestoneCard] = useState(false);
@@ -1205,6 +1287,7 @@ export default function Dashboard() {
     logAction.mutate({ data: { type } } as any, {
       onSuccess: () => {
         setJustLogged(type);
+        if (actionsToday === 0) setLastActionType(type);
         qc.invalidateQueries({ queryKey: getGetTodayActionsQueryKey() });
         qc.invalidateQueries({ queryKey: getGetFutureSelfQueryKey() });
         qc.invalidateQueries({ queryKey: getGetUserStatsQueryKey() });
@@ -1289,6 +1372,7 @@ export default function Dashboard() {
             <TomorrowPreview
               firstName={firstName}
               streakDays={streakDays}
+              lastActionType={lastActionType}
               onDismiss={() => setShowTomorrowPreview(false)}
               onSavePromise={savePromise}
             />
