@@ -318,7 +318,64 @@ function getStreakState(streakDays: number, actionsToday: number): StreakState {
   return "safe";
 }
 
-function StreakStatusBar({ streakDays, actionsToday, firstName }: { streakDays: number; actionsToday: number; firstName: string }) {
+function StreakChain({ allActions, actionsToday }: { allActions: any[]; actionsToday: number }) {
+  const days = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const actionDays = new Set(
+      allActions.map((a: any) => new Date(a.completedAt).toISOString().split("T")[0])
+    );
+    return Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - (13 - i));
+      const key = d.toISOString().split("T")[0];
+      const todayKey = today.toISOString().split("T")[0];
+      const isToday = key === todayKey;
+      const hasAction = actionDays.has(key) || (isToday && actionsToday > 0);
+      return { key, isToday, hasAction, dayLabel: d.toLocaleDateString("en-US", { weekday: "short" })[0] };
+    });
+  }, [allActions, actionsToday]);
+
+  const longestRun = useMemo(() => {
+    let best = 0, cur = 0;
+    for (const d of days) {
+      if (d.hasAction) { cur++; best = Math.max(best, cur); } else cur = 0;
+    }
+    return best;
+  }, [days]);
+
+  return (
+    <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-white/5">
+      {days.map((d, i) => (
+        <div key={d.key} className="flex flex-col items-center gap-1 flex-1">
+          <div className="relative">
+            {d.isToday && !d.hasAction ? (
+              <>
+                <span className="absolute inset-0 rounded-full animate-ping bg-amber-400/40" />
+                <div className="relative w-3.5 h-3.5 rounded-full border-2 border-amber-400/70 bg-amber-400/10" />
+              </>
+            ) : d.hasAction ? (
+              <div className={`w-3.5 h-3.5 rounded-full ${
+                d.isToday
+                  ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"
+                  : i >= 14 - longestRun && longestRun > 1
+                  ? "bg-orange-400/90"
+                  : "bg-orange-400/60"
+              }`} />
+            ) : (
+              <div className="w-3.5 h-3.5 rounded-full bg-white/8" />
+            )}
+          </div>
+          {d.isToday && (
+            <span className="text-[8px] font-bold text-white/30 uppercase leading-none">now</span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StreakStatusBar({ streakDays, actionsToday, firstName, allActions }: { streakDays: number; actionsToday: number; firstName: string; allActions: any[] }) {
   const now = new Date();
   const hour = now.getHours();
   const state = getStreakState(streakDays, actionsToday);
@@ -375,30 +432,38 @@ function StreakStatusBar({ streakDays, actionsToday, firstName }: { streakDays: 
     },
   }[state];
 
+  const hasHistory = allActions.length > 0;
+
   return (
     <AnimatePresence mode="wait">
       <motion.div key={state} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.35 }}
-        className={`rounded-2xl border ${config.border} ${config.bg} px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5`}>
+        className={`rounded-2xl border ${config.border} ${config.bg} px-5 py-4 relative overflow-hidden`}>
         {state === "unprotected" && (
           <div className="absolute -top-1 -right-1 w-3 h-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-60" />
             <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
           </div>
         )}
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="shrink-0">{config.icon}</div>
-          <div className="min-w-0">
-            <p className="font-bold text-white text-sm leading-snug">{config.headline}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{config.sub}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="shrink-0">{config.icon}</div>
+            <div className="min-w-0">
+              <p className="font-bold text-white text-sm leading-snug">{config.headline}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{config.sub}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            {config.badge}
+            <Link href={config.cta.href}
+              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${config.cta.color}`}>
+              {config.cta.label}
+            </Link>
           </div>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          {config.badge}
-          <Link href={config.cta.href}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${config.cta.color}`}>
-            {config.cta.label}
-          </Link>
-        </div>
+        {/* 14-day visual chain — only shown once user has any history */}
+        {hasHistory && (
+          <StreakChain allActions={allActions} actionsToday={actionsToday} />
+        )}
       </motion.div>
     </AnimatePresence>
   );
@@ -1352,7 +1417,7 @@ export default function Dashboard() {
 
         {/* Streak status bar */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="relative">
-          <StreakStatusBar streakDays={streakDays} actionsToday={actionsToday} firstName={firstName} />
+          <StreakStatusBar streakDays={streakDays} actionsToday={actionsToday} firstName={firstName} allActions={allActions} />
         </motion.div>
 
         {/* Milestone Achievement Card — fires on streak milestones at peak motivation */}
