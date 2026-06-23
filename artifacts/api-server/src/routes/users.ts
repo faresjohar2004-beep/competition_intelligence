@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, usersTable, futureSelfTable, actionsTable, lifeMapTable, chaptersTable, userChaptersTable } from "@workspace/db";
-import { eq, count, sql } from "drizzle-orm";
+import { eq, count, sql, gte, and } from "drizzle-orm";
 import { requireAuth, requireAuthWithUser } from "../lib/auth";
 import { clampScore, calcOverallScore } from "../lib/scores";
 
@@ -107,6 +107,61 @@ router.post("/onboard", requireAuth, async (req, res) => {
   }
 
   res.status(201).json({ ...user, createdAt: user.createdAt.toISOString(), updatedAt: user.updatedAt.toISOString() });
+});
+
+// POST /api/users/me/streak-freeze
+// Protects the user's streak after a missed day — sets lastActiveDate to yesterday
+// so their next action extends the streak instead of resetting it to 1.
+// Limited to once per 30 days per user.
+router.post("/me/streak-freeze", requireAuthWithUser, async (req, res) => {
+  const user = (req as any).user;
+
+  // Check for a recent freeze (any streak_freeze action in the last 30 days)
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const [recentFreeze] = await db
+    .select()
+    .from(actionsTable)
+    .where(
+      and(
+        eq(actionsTable.userId, user.id),
+        eq(actionsTable.type, "streak_freeze"),
+        gte(actionsTable.completedAt, thirtyDaysAgo)
+      )
+    )
+    .limit(1);
+
+  if (recentFreeze) {
+    return res.status(400).json({ error: "Streak freeze already used this month" });
+  }
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  if (user.lastActiveDate === todayStr) {
+    return res.status(400).json({ error: "You already logged today — no freeze needed" });
+  }
+
+  // Backdate lastActiveDate to yesterday so the next action extends the streak
+  const yesterday = new Date(Date.now() - 86400000);
+  const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+  // Insert a streak_freeze record (tracks usage + shows in Evidence Vault)
+  yesterday.setHours(12, 0, 0, 0);
+  await db.insert(actionsTable).values({
+    userId: user.id,
+    type: "streak_freeze",
+    completedAt: yesterday,
+  });
+
+  // Patch user so next action today sees lastActiveDate = yesterday → streak extends
+  await db
+    .update(usersTable)
+    .set({ lastActiveDate: yesterdayStr, updatedAt: new Date() })
+    .where(eq(usersTable.id, user.id));
+
+  res.json({
+    success: true,
+    message: "Streak freeze applied. Log an action today to extend your streak.",
+    streakDays: user.streakDays,
+  });
 });
 
 // GET /api/users/stats

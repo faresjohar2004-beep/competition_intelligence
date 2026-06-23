@@ -7,7 +7,7 @@ import {
   getGetTodayActionsQueryKey, getGetFutureSelfQueryKey, getGetUserStatsQueryKey,
 } from "@workspace/api-client-react";
 import { useAlignment, useMissions } from "@/hooks/useMissions";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -316,6 +316,77 @@ function getStreakState(streakDays: number, actionsToday: number): StreakState {
   if (actionsToday === 0) return "unprotected";
   if (actionsToday >= 6) return "legendary";
   return "safe";
+}
+
+// ─── Streak Recovery Card ─────────────────────────────────────────────────────
+function StreakRecoveryCard({
+  streakDays,
+  onFreeze,
+  onDismiss,
+  isPending,
+}: {
+  streakDays: number;
+  onFreeze: () => void;
+  onDismiss: () => void;
+  isPending: boolean;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -6, scale: 0.97 }}
+      transition={{ duration: 0.35 }}
+      className="rounded-2xl border border-amber-500/35 bg-amber-500/6 p-5 relative overflow-hidden"
+    >
+      <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative z-10">
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-5 h-5 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-[11px]">
+            🧊
+          </div>
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-400">
+            Streak Freeze Available
+          </p>
+        </div>
+
+        {/* Headline */}
+        <h3 className="text-base sm:text-lg font-black text-white mb-1.5 leading-snug">
+          Your {streakDays}-day streak ends here — unless you freeze it.
+        </h3>
+        <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+          You missed yesterday. Log today without a freeze and your {streakDays}-day streak resets to&nbsp;1.
+          Apply your freeze now, then log today — and your streak continues.
+        </p>
+
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={onFreeze}
+            disabled={isPending}
+            className="flex-1 h-11 rounded-xl bg-amber-500/20 border border-amber-500/35 text-amber-300 font-bold text-sm hover:bg-amber-500/30 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+          >
+            {isPending ? (
+              "Applying…"
+            ) : (
+              <>
+                🧊 Apply Freeze &amp; Protect Streak
+              </>
+            )}
+          </button>
+          <button
+            onClick={onDismiss}
+            className="h-11 px-4 rounded-xl text-xs text-white/25 hover:text-white/45 transition-colors whitespace-nowrap"
+          >
+            Accept the reset
+          </button>
+        </div>
+        <p className="text-[10px] text-muted-foreground/40 mt-2">
+          1 freeze per 30 days · You must still log an action today
+        </p>
+      </div>
+    </motion.div>
+  );
 }
 
 function StreakChain({ allActions, actionsToday }: { allActions: any[]; actionsToday: number }) {
@@ -1301,6 +1372,7 @@ export default function Dashboard() {
   const [showTomorrowPreview, setShowTomorrowPreview] = useState(false);
   const [showMilestoneCard, setShowMilestoneCard] = useState(false);
   const [milestoneStreak, setMilestoneStreak] = useState(0);
+  const [freezeDismissed, setFreezeDismissed] = useState(false);
 
   const tomorrowPromise = (user as any)?.tomorrowPromise as string | null | undefined;
 
@@ -1332,6 +1404,48 @@ export default function Dashboard() {
     ((user as any)?.career
       ? `I am becoming ${CAREER_TO_IDENTITY[(user as any).career] ?? "someone who shows up every day"}.`
       : null);
+  // ── Streak Freeze detection ──────────────────────────────────────────────
+  const freezeMutation = useMutation({
+    mutationFn: async () => {
+      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const res = await fetch(`${BASE}/api/users/me/streak-freeze`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: getGetUserStatsQueryKey() });
+      qc.invalidateQueries({ queryKey: getGetTodayActionsQueryKey() });
+      qc.invalidateQueries();
+    },
+  });
+
+  const showStreakFreeze = useMemo(() => {
+    if (freezeDismissed) return false;
+    if (freezeMutation.isSuccess) return false;
+    if (actionsToday > 0) return false;
+    if (streakDays < 3) return false;
+    // Check if the most recent action was before yesterday (streak is broken)
+    const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+    const hadActionYesterday = allActions.some(
+      (a: any) => new Date(a.completedAt).toISOString().split("T")[0] === yesterdayStr
+    );
+    if (hadActionYesterday) return false;
+    // Check no freeze used in last 30 days
+    const thirtyDaysAgo = Date.now() - 30 * 86400000;
+    const hasRecentFreeze = allActions.some(
+      (a: any) => a.type === "streak_freeze" && new Date(a.completedAt).getTime() > thirtyDaysAgo
+    );
+    if (hasRecentFreeze) return false;
+    // Must have some history (not a new user with 0 total actions)
+    const lastAction = allActions[0];
+    if (!lastAction) return false;
+    return true;
+  }, [freezeDismissed, freezeMutation.isSuccess, actionsToday, streakDays, allActions]);
+
   const loggedTypes = useMemo(
     () => new Set((todayActions?.actions ?? []).map((a: any) => a.type)),
     [todayActions],
@@ -1414,6 +1528,36 @@ export default function Dashboard() {
             </Link>
           </motion.div>
         )}
+
+        {/* Streak Freeze Recovery Card — shown when streak is broken and freeze available */}
+        <AnimatePresence>
+          {showStreakFreeze && (
+            <StreakRecoveryCard
+              streakDays={streakDays}
+              isPending={freezeMutation.isPending}
+              onFreeze={() => freezeMutation.mutate()}
+              onDismiss={() => setFreezeDismissed(true)}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Freeze applied confirmation */}
+        <AnimatePresence>
+          {freezeMutation.isSuccess && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="rounded-2xl border border-emerald-500/30 bg-emerald-500/8 px-5 py-4 flex items-center gap-3"
+            >
+              <span className="text-lg">🧊</span>
+              <div>
+                <p className="text-sm font-bold text-emerald-400">Streak frozen.</p>
+                <p className="text-xs text-muted-foreground">Log one action today to extend your {streakDays + 1}-day streak.</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Streak status bar */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="relative">
