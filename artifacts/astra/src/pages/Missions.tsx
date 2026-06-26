@@ -1,16 +1,196 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMissions, useCompleteMission, useMilestones, useRegret, useAlignment } from "@/hooks/useMissions";
-import { Zap, Target, Shield, Flame, Trophy, AlertTriangle, CheckCircle2, Circle, ChevronRight, Skull } from "lucide-react";
+import { useGetUserStats, useGetMe } from "@workspace/api-client-react";
+import { Link } from "wouter";
+import {
+  Zap, Target, Shield, Flame, Trophy, AlertTriangle, CheckCircle2, Circle,
+  Skull, Star, ArrowRight, ChevronDown, ChevronUp,
+} from "lucide-react";
 
+// ─── Mission Complete Overlay ─────────────────────────────────────────────────
+function MissionCompleteCard({
+  firstName,
+  streakDays,
+  alignScore,
+}: {
+  firstName: string;
+  streakDays: number;
+  alignScore: number;
+}) {
+  const [showList, setShowList] = useState(false);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -16, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }}
+      className="rounded-2xl border border-amber-400/30 relative overflow-hidden"
+      style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(168,85,247,0.08) 100%)" }}
+    >
+      {/* Ambient glows */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-amber-400/6 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-48 h-48 bg-violet-500/5 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="relative z-10 p-6 sm:p-8">
+        {/* Header chip */}
+        <div className="flex items-center gap-2 mb-5">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 300 }}
+            className="w-8 h-8 rounded-full bg-amber-400/20 border border-amber-400/40 flex items-center justify-center"
+          >
+            <Star className="w-4 h-4 text-amber-400 fill-amber-400/60" />
+          </motion.div>
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-400">
+            Perfect Mission Day — 5/5
+          </p>
+        </div>
+
+        {/* Headline */}
+        <motion.h2
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="text-2xl sm:text-3xl font-black text-white mb-2 leading-tight"
+        >
+          You went 5 for 5, {firstName}.
+        </motion.h2>
+
+        {/* Identity line */}
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.22 }}
+          className="text-sm text-amber-200/70 font-medium italic mb-6 leading-relaxed"
+        >
+          "Most people finish 0. Some finish 1. You finished all of them.
+          That gap — between intention and execution — is who you actually are."
+        </motion.p>
+
+        {/* Stats row */}
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.28 }}
+          className="flex gap-3 mb-7"
+        >
+          <div className="flex-1 rounded-xl border border-amber-400/15 bg-amber-500/8 px-4 py-3 text-center">
+            <p className="text-2xl font-black text-amber-400">{streakDays}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">Day Streak</p>
+          </div>
+          <div className="flex-1 rounded-xl border border-violet-500/15 bg-violet-500/8 px-4 py-3 text-center">
+            <p className="text-2xl font-black text-violet-400">{alignScore}%</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">Alignment</p>
+          </div>
+          <div className="flex-1 rounded-xl border border-emerald-500/15 bg-emerald-500/8 px-4 py-3 text-center">
+            <p className="text-2xl font-black text-emerald-400">5</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">Missions Done</p>
+          </div>
+        </motion.div>
+
+        {/* Checkmark row — visual proof */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.35 }}
+          className="flex gap-2 mb-7"
+        >
+          {["Critical", "Mission 2", "Mission 3", "Mission 4", "Courage"].map((label, i) => (
+            <motion.div
+              key={label}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.38 + i * 0.07, type: "spring", stiffness: 400 }}
+              className="flex-1 flex flex-col items-center gap-1.5"
+            >
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-emerald-500/20 border border-emerald-500/35 flex items-center justify-center">
+                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
+              </div>
+              <p className="text-[8px] text-muted-foreground/40 text-center hidden sm:block leading-tight">{label}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* CTAs */}
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="flex flex-col sm:flex-row gap-2"
+        >
+          <Link
+            href="/evidence"
+            className="flex-1 h-11 rounded-xl bg-amber-400/15 border border-amber-400/30 text-amber-300 font-bold text-sm hover:bg-amber-400/25 transition-all flex items-center justify-center gap-2"
+          >
+            See Your Evidence <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link
+            href="/dashboard"
+            className="flex-1 h-11 rounded-xl border border-white/8 bg-white/4 text-white/60 font-medium text-sm hover:bg-white/8 transition-all flex items-center justify-center gap-2"
+          >
+            Back to Dashboard
+          </Link>
+        </motion.div>
+
+        {/* Toggle missions list */}
+        <button
+          onClick={() => setShowList(v => !v)}
+          className="flex items-center gap-1.5 text-[11px] text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors mt-4 mx-auto"
+        >
+          {showList ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          {showList ? "Hide completed missions" : "Review completed missions"}
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Missions() {
   const { data: missions, isLoading: missionsLoading } = useMissions();
   const { data: alignment } = useAlignment();
   const { data: milestones = [] } = useMilestones();
   const { data: regrets = [] } = useRegret();
+  const { data: stats } = useGetUserStats();
+  const { data: user } = useGetMe();
   const completeMission = useCompleteMission();
   const [tab, setTab] = useState<"missions" | "legends" | "regret">("missions");
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [showMissionList, setShowMissionList] = useState(false);
+  const prevComplete = useRef(false);
+
+  const firstName = (user as any)?.name?.split(" ")[0] ?? "Explorer";
+  const streakDays = stats?.streakDays ?? 0;
+  const alignScore = alignment?.alignmentScore ?? 0;
+
+  const allComplete = !!(
+    missions &&
+    missions.criticalCompleted &&
+    missions.secondary1Completed &&
+    missions.secondary2Completed &&
+    missions.secondary3Completed &&
+    missions.courageCompleted
+  );
+
+  // Fire celebration the first time all missions become complete this session
+  useEffect(() => {
+    if (allComplete && !prevComplete.current) {
+      setShowCelebration(true);
+      setShowMissionList(false);
+    }
+    prevComplete.current = allComplete;
+  }, [allComplete]);
+
+  // If page is opened when already complete, show celebration immediately (no animation delay)
+  useEffect(() => {
+    if (allComplete && !showCelebration) {
+      setShowCelebration(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missions]);
 
   const handleComplete = (slot: string) => {
     completeMission.mutate(slot as any);
@@ -42,6 +222,12 @@ export default function Missions() {
             >
               <t.icon className="w-4 h-4" />
               {t.label}
+              {/* Badge for complete state */}
+              {t.id === "missions" && allComplete && (
+                <span className="ml-1 w-4 h-4 rounded-full bg-amber-400/20 border border-amber-400/40 flex items-center justify-center">
+                  <Star className="w-2.5 h-2.5 text-amber-400 fill-amber-400/80" />
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -57,90 +243,140 @@ export default function Missions() {
                 </div>
               ) : missions ? (
                 <>
-                  {/* Critical Mission */}
-                  <div className="rounded-2xl border border-red-500/30 bg-gradient-to-br from-red-500/10 to-red-500/5 p-6 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-40 h-40 bg-red-500/10 rounded-full blur-[60px]" />
-                    <div className="relative z-10">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Flame className="w-4 h-4 text-red-400" />
-                        <span className="text-xs font-bold text-red-400 uppercase tracking-widest">Critical Mission</span>
-                      </div>
-                      <p className="text-lg font-semibold text-white mb-4">{missions.criticalMission}</p>
-                      <button
-                        onClick={() => handleComplete("critical")}
-                        disabled={missions.criticalCompleted || completeMission.isPending}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                          missions.criticalCompleted
-                            ? "bg-emerald-500/20 text-emerald-400 cursor-default"
-                            : "bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30"
-                        }`}
-                      >
-                        {missions.criticalCompleted ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
-                        {missions.criticalCompleted ? "Completed" : "Mark Complete"}
-                      </button>
-                    </div>
-                  </div>
+                  {/* ── Mission Complete Celebration ── */}
+                  <AnimatePresence>
+                    {showCelebration && allComplete && (
+                      <MissionCompleteCard
+                        firstName={firstName}
+                        streakDays={streakDays}
+                        alignScore={alignScore}
+                      />
+                    )}
+                  </AnimatePresence>
 
-                  {/* Secondary Missions */}
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                      <Target className="w-4 h-4" /> Secondary Missions
-                    </h3>
-                    {[
-                      { text: missions.secondaryMission1, slot: "secondary1", done: missions.secondary1Completed },
-                      { text: missions.secondaryMission2, slot: "secondary2", done: missions.secondary2Completed },
-                      { text: missions.secondaryMission3, slot: "secondary3", done: missions.secondary3Completed },
-                    ].map((m, i) => (
+                  {/* Toggle to show missions below celebration */}
+                  {allComplete && showCelebration && (
+                    <button
+                      onClick={() => setShowMissionList(v => !v)}
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                    >
+                      {showMissionList ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      {showMissionList ? "Hide completed missions" : "Review completed missions"}
+                    </button>
+                  )}
+
+                  {/* Mission list — always shown if not complete; toggleable if complete */}
+                  <AnimatePresence>
+                    {(!allComplete || showMissionList) && (
                       <motion.div
-                        key={i}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.08 }}
-                        className={`flex items-center gap-4 rounded-xl border p-4 transition-all ${
-                          m.done ? "border-emerald-500/20 bg-emerald-500/5" : "border-border bg-card"
-                        }`}
+                        initial={allComplete ? { opacity: 0, height: 0 } : false}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="space-y-6 overflow-hidden"
                       >
-                        <button
-                          onClick={() => handleComplete(m.slot)}
-                          disabled={m.done || completeMission.isPending}
-                          className="shrink-0"
-                        >
-                          {m.done ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
-                          )}
-                        </button>
-                        <span className={`text-sm font-medium ${m.done ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                          {m.text}
-                        </span>
-                      </motion.div>
-                    ))}
-                  </div>
+                        {/* Critical Mission */}
+                        <div className={`rounded-2xl border p-6 relative overflow-hidden transition-all ${
+                          missions.criticalCompleted
+                            ? "border-emerald-500/20 bg-emerald-500/5"
+                            : "border-red-500/30 bg-gradient-to-br from-red-500/10 to-red-500/5"
+                        }`}>
+                          <div className="absolute top-0 right-0 w-40 h-40 bg-red-500/10 rounded-full blur-[60px]" />
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Flame className={`w-4 h-4 ${missions.criticalCompleted ? "text-emerald-400" : "text-red-400"}`} />
+                              <span className={`text-xs font-bold uppercase tracking-widest ${missions.criticalCompleted ? "text-emerald-400" : "text-red-400"}`}>
+                                Critical Mission {missions.criticalCompleted ? "✓" : ""}
+                              </span>
+                            </div>
+                            <p className={`text-lg font-semibold mb-4 ${missions.criticalCompleted ? "line-through text-muted-foreground" : "text-white"}`}>
+                              {missions.criticalMission}
+                            </p>
+                            <button
+                              onClick={() => handleComplete("critical")}
+                              disabled={missions.criticalCompleted || completeMission.isPending}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                missions.criticalCompleted
+                                  ? "bg-emerald-500/20 text-emerald-400 cursor-default"
+                                  : "bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30"
+                              }`}
+                            >
+                              {missions.criticalCompleted ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
+                              {missions.criticalCompleted ? "Completed" : "Mark Complete"}
+                            </button>
+                          </div>
+                        </div>
 
-                  {/* Courage Challenge */}
-                  <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-amber-500/5 p-6 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/10 rounded-full blur-[60px]" />
-                    <div className="relative z-10">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Shield className="w-4 h-4 text-amber-400" />
-                        <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">Courage Challenge</span>
-                      </div>
-                      <p className="text-lg font-semibold text-white mb-4">{missions.courageChallenge}</p>
-                      <button
-                        onClick={() => handleComplete("courage")}
-                        disabled={missions.courageCompleted || completeMission.isPending}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        {/* Secondary Missions */}
+                        <div className="space-y-3">
+                          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                            <Target className="w-4 h-4" /> Secondary Missions
+                          </h3>
+                          {[
+                            { text: missions.secondaryMission1, slot: "secondary1", done: missions.secondary1Completed },
+                            { text: missions.secondaryMission2, slot: "secondary2", done: missions.secondary2Completed },
+                            { text: missions.secondaryMission3, slot: "secondary3", done: missions.secondary3Completed },
+                          ].map((m, i) => (
+                            <motion.div
+                              key={i}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: i * 0.08 }}
+                              className={`flex items-center gap-4 rounded-xl border p-4 transition-all ${
+                                m.done ? "border-emerald-500/20 bg-emerald-500/5" : "border-border bg-card"
+                              }`}
+                            >
+                              <button
+                                onClick={() => handleComplete(m.slot)}
+                                disabled={m.done || completeMission.isPending}
+                                className="shrink-0"
+                              >
+                                {m.done ? (
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                                ) : (
+                                  <Circle className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
+                                )}
+                              </button>
+                              <span className={`text-sm font-medium ${m.done ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                                {m.text}
+                              </span>
+                            </motion.div>
+                          ))}
+                        </div>
+
+                        {/* Courage Challenge */}
+                        <div className={`rounded-2xl border p-6 relative overflow-hidden transition-all ${
                           missions.courageCompleted
-                            ? "bg-emerald-500/20 text-emerald-400 cursor-default"
-                            : "bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30"
-                        }`}
-                      >
-                        {missions.courageCompleted ? <CheckCircle2 className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
-                        {missions.courageCompleted ? "Courage Demonstrated" : "I Accept This Challenge"}
-                      </button>
-                    </div>
-                  </div>
+                            ? "border-emerald-500/20 bg-emerald-500/5"
+                            : "border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-amber-500/5"
+                        }`}>
+                          <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/10 rounded-full blur-[60px]" />
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Shield className={`w-4 h-4 ${missions.courageCompleted ? "text-emerald-400" : "text-amber-400"}`} />
+                              <span className={`text-xs font-bold uppercase tracking-widest ${missions.courageCompleted ? "text-emerald-400" : "text-amber-400"}`}>
+                                Courage Challenge {missions.courageCompleted ? "✓" : ""}
+                              </span>
+                            </div>
+                            <p className={`text-lg font-semibold mb-4 ${missions.courageCompleted ? "line-through text-muted-foreground" : "text-white"}`}>
+                              {missions.courageChallenge}
+                            </p>
+                            <button
+                              onClick={() => handleComplete("courage")}
+                              disabled={missions.courageCompleted || completeMission.isPending}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                missions.courageCompleted
+                                  ? "bg-emerald-500/20 text-emerald-400 cursor-default"
+                                  : "bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30"
+                              }`}
+                            >
+                              {missions.courageCompleted ? <CheckCircle2 className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                              {missions.courageCompleted ? "Courage Demonstrated" : "I Accept This Challenge"}
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </>
               ) : (
                 <div className="text-center py-16 text-muted-foreground">
