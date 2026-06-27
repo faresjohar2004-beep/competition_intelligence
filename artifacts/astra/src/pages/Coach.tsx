@@ -7,7 +7,7 @@ import { useIsPaywalled } from "@/hooks/useSubscription";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Send, Bot, User, Lightbulb, TrendingUp, AlertTriangle, Crown } from "lucide-react";
+import { Send, Bot, User, Lightbulb, TrendingUp, AlertTriangle, Crown, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const INSIGHT_ICONS: Record<string, any> = {
@@ -21,17 +21,36 @@ const INSIGHT_COLORS: Record<string, string> = {
   warning:        "border-amber-500/30 bg-amber-500/5 text-amber-400",
 };
 
-function buildAstraGreeting(
+// ─── Daily greeting — changes with context, speaks first every session ─────────
+function buildDailyGreeting(
   name: string,
   actionsToday: number,
   streakDays: number,
   topAction: string,
   hour: number,
+  isReturning: boolean,
 ): string {
   const first = name.split(" ")[0];
-  const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const timeGreeting = hour < 5 ? "Still up" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const actionName = topAction.replace(/_/g, " ");
 
+  if (isReturning && actionsToday === 0 && streakDays > 0) {
+    return `${timeGreeting}, ${first}.\n\nWelcome back. You've built a ${streakDays}-day streak — don't let today be the day it breaks.\n\nYour highest-leverage move right now: **${actionName}**.\n\nWhat's the resistance today? Let's work through it.`;
+  }
+
+  if (isReturning && actionsToday === 0 && streakDays === 0) {
+    return `${timeGreeting}, ${first}.\n\nGood to have you back. Today is a fresh start — every identity shift begins with a single day of evidence.\n\nWhat's one action you could take in the next 30 minutes?`;
+  }
+
+  if (isReturning && actionsToday >= 3) {
+    return `${timeGreeting}, ${first}.\n\n${actionsToday} actions already today${streakDays > 1 ? ` — day ${streakDays} of your streak` : ""}. You're building the kind of evidence most people only plan about.\n\nWhat do you want to push next? I'm here.`;
+  }
+
+  if (isReturning && actionsToday > 0) {
+    return `${timeGreeting}, ${first}.\n\nYou've got ${actionsToday} action${actionsToday !== 1 ? "s" : ""} logged today${streakDays > 0 ? ` — day ${streakDays} running` : ""}. Momentum is building.\n\nYour next highest-leverage move: **${actionName}**.\n\nWhat's on your mind?`;
+  }
+
+  // First-ever session
   if (actionsToday === 0 && streakDays === 0) {
     return `${timeGreeting}, ${first}.\n\nI've been waiting to meet you.\n\nYour highest-leverage action right now: **${actionName}**. One decision today sets the trajectory for everything that follows.\n\nWhat's standing between you and starting?`;
   }
@@ -51,7 +70,23 @@ function buildAstraGreeting(
   return `${timeGreeting}, ${first}.\n\nYou've logged ${actionsToday} action${actionsToday !== 1 ? "s" : ""} today${streakDays > 0 ? ` — day ${streakDays} of your streak` : ""}. Momentum is building.\n\nYour next highest-leverage action: **${actionName}**.\n\nWhat do you need from me right now to make today exceptional?`;
 }
 
-function buildContextualPrompts(actionsToday: number, streakDays: number): string[] {
+function buildContextualPrompts(actionsToday: number, streakDays: number, isReturning: boolean): string[] {
+  if (isReturning && streakDays >= 14) {
+    return [
+      `How do I protect a ${streakDays}-day streak under pressure?`,
+      "What separates good streaks from identity-level change?",
+      "I want to level up — what's the next constraint to remove?",
+      "How do I make this feel effortless instead of forced?",
+    ];
+  }
+  if (isReturning && actionsToday === 0) {
+    return [
+      "I'm struggling to start today — help me",
+      "What's the ONE thing I should do right now?",
+      "Why do I keep losing momentum between sessions?",
+      "How do I make today count even if it's already late?",
+    ];
+  }
   if (actionsToday === 0) {
     return [
       "I'm struggling to start today — help me",
@@ -93,6 +128,17 @@ function renderMessageContent(content: string) {
   );
 }
 
+function formatMessageDate(iso: string) {
+  const d = new Date(iso);
+  const now = new Date();
+  const todayStr = now.toDateString();
+  const yest = new Date(now); yest.setDate(yest.getDate() - 1);
+  if (d.toDateString() === todayStr) return "Today";
+  if (d.toDateString() === yest.toDateString()) return "Yesterday";
+  return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Coach() {
   const qc = useQueryClient();
   const { data: messages = [], isLoading: messagesLoading } = useGetCoachingMessages();
@@ -109,20 +155,42 @@ export default function Coach() {
   const actionsToday = todayActions?.actions?.length ?? 0;
   const streakDays   = stats?.streakDays ?? 0;
   const topAction    = alignment?.topAction ?? "deep work";
-  const userName     = user?.name ?? "Explorer";
+  const userName     = (user as any)?.name ?? "Explorer";
   const hour         = new Date().getHours();
 
+  // ── Split messages into historical and today's ────────────────────────────
+  const todayStr = new Date().toISOString().split("T")[0];
+  const { historicalMsgs, todayMsgs, groupedHistory } = useMemo(() => {
+    const all = messages as any[];
+    const hist = all.filter((m) => new Date(m.createdAt).toISOString().split("T")[0] !== todayStr);
+    const todays = all.filter((m) => new Date(m.createdAt).toISOString().split("T")[0] === todayStr);
+
+    // Group historical by date for separators
+    const grouped: { date: string; label: string; messages: any[] }[] = [];
+    hist.forEach((m) => {
+      const d = new Date(m.createdAt).toISOString().split("T")[0];
+      const label = formatMessageDate(m.createdAt);
+      const existing = grouped.find((g) => g.date === d);
+      if (existing) existing.messages.push(m);
+      else grouped.push({ date: d, label, messages: [m] });
+    });
+
+    return { historicalMsgs: hist, todayMsgs: todays, groupedHistory: grouped };
+  }, [messages, todayStr]);
+
+  const isReturning  = historicalMsgs.length > 0;
+  const hasChattedToday = todayMsgs.length > 0;
+  const showDailyGreeting = !messagesLoading && !hasChattedToday;
+
   const astraGreeting = useMemo(
-    () => buildAstraGreeting(userName, actionsToday, streakDays, topAction, hour),
-    [userName, actionsToday, streakDays, topAction, hour],
+    () => buildDailyGreeting(userName, actionsToday, streakDays, topAction, hour, isReturning),
+    [userName, actionsToday, streakDays, topAction, hour, isReturning],
   );
 
   const contextualPrompts = useMemo(
-    () => buildContextualPrompts(actionsToday, streakDays),
-    [actionsToday, streakDays],
+    () => buildContextualPrompts(actionsToday, streakDays, isReturning),
+    [actionsToday, streakDays, isReturning],
   );
-
-  const showEmptyState = (messages as any[]).length === 0 && !messagesLoading;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -195,20 +263,73 @@ export default function Coach() {
             </motion.div>
           )}
 
-          {/* Messages */}
+          {/* Messages scroll area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
 
-            {/* Empty state — ASTRA speaks first */}
+            {/* Loading skeleton */}
+            {messagesLoading && (
+              <div className="space-y-4">
+                {[120, 200, 80].map((w, i) => (
+                  <div key={i} className={`flex gap-3 ${i % 2 === 1 ? "flex-row-reverse" : ""}`}>
+                    <div className="w-8 h-8 rounded-full bg-white/5 animate-pulse shrink-0" />
+                    <div className="h-10 rounded-2xl bg-white/5 animate-pulse" style={{ width: w }} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Historical messages — grouped by date */}
+            {!messagesLoading && groupedHistory.map((group) => (
+              <div key={group.date}>
+                {/* Date separator */}
+                <div className="flex items-center gap-3 my-5">
+                  <div className="flex-1 h-px bg-white/5" />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/30">{group.label}</span>
+                  <div className="flex-1 h-px bg-white/5" />
+                </div>
+                <div className="space-y-4">
+                  {group.messages.map((msg: any) => (
+                    <MessageBubble key={msg.id} msg={msg} />
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {/* Today separator — only if there's history above */}
+            {!messagesLoading && isReturning && (
+              <div className="flex items-center gap-3 my-5">
+                <div className="flex-1 h-px bg-white/5" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/50 flex items-center gap-1.5">
+                  <Sparkles className="w-2.5 h-2.5" /> Today
+                </span>
+                <div className="flex-1 h-px bg-white/5" />
+              </div>
+            )}
+
+            {/* Today's messages */}
+            <AnimatePresence initial={false}>
+              {todayMsgs.map((msg: any) => (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <MessageBubble msg={msg} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+
+            {/* ── Daily Greeting — fires every day, not just first session ── */}
             <AnimatePresence>
-              {showEmptyState && !messagesLoading && (
+              {showDailyGreeting && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.4 }}
+                  transition={{ duration: 0.4, delay: isReturning ? 0.15 : 0 }}
                   className="space-y-4"
                 >
-                  {/* ASTRA opening message */}
+                  {/* ASTRA message bubble */}
                   <div className="flex gap-3">
                     <div className="shrink-0 w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mt-1">
                       <Bot className="h-4 w-4 text-primary" />
@@ -216,8 +337,8 @@ export default function Coach() {
                     <motion.div
                       initial={{ opacity: 0, scale: 0.97 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.15, duration: 0.4 }}
-                      className="max-w-[80%] rounded-2xl rounded-tl-sm px-5 py-4 bg-card border border-border"
+                      transition={{ delay: isReturning ? 0.25 : 0.15, duration: 0.4 }}
+                      className="max-w-[82%] rounded-2xl rounded-tl-sm px-5 py-4 bg-card border border-border"
                     >
                       <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line">
                         {renderMessageContent(astraGreeting)}
@@ -225,14 +346,14 @@ export default function Coach() {
                     </motion.div>
                   </div>
 
-                  {/* Context-aware quick prompts */}
+                  {/* Quick prompts */}
                   <motion.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.45 }}
+                    transition={{ delay: isReturning ? 0.4 : 0.45 }}
                     className="ml-11"
                   >
-                    <p className="text-xs text-muted-foreground/60 mb-2 font-medium uppercase tracking-wider">Quick replies</p>
+                    <p className="text-xs text-muted-foreground/50 mb-2 font-medium uppercase tracking-wider">Quick replies</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {contextualPrompts.map((p) => (
                         <button
@@ -248,48 +369,6 @@ export default function Coach() {
                   </motion.div>
                 </motion.div>
               )}
-            </AnimatePresence>
-
-            {/* Loading skeleton */}
-            {messagesLoading && (
-              <div className="space-y-4">
-                {[120, 200, 80].map((w, i) => (
-                  <div key={i} className={`flex gap-3 ${i % 2 === 1 ? "flex-row-reverse" : ""}`}>
-                    <div className="w-8 h-8 rounded-full bg-white/5 animate-pulse shrink-0" />
-                    <div className={`h-10 rounded-2xl bg-white/5 animate-pulse`} style={{ width: w }} />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Conversation messages */}
-            <AnimatePresence initial={false}>
-              {(messages as any[]).map((msg: any) => (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
-                >
-                  <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-0.5 ${
-                    msg.role === "user"
-                      ? "bg-primary/20"
-                      : "bg-white/5 border border-white/10"
-                  }`}>
-                    {msg.role === "user"
-                      ? <User className="h-4 w-4 text-primary" />
-                      : <Bot className="h-4 w-4 text-primary" />
-                    }
-                  </div>
-                  <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground rounded-tr-sm"
-                      : "bg-card border border-border rounded-tl-sm text-foreground/90"
-                  }`}>
-                    {msg.content}
-                  </div>
-                </motion.div>
-              ))}
             </AnimatePresence>
 
             {/* Thinking indicator */}
@@ -336,7 +415,7 @@ export default function Coach() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground/40 mt-2 text-center">
-              ASTRA knows your streak, today's actions, and your goals
+              ASTRA knows your streak, today's actions, and your full coaching history
             </p>
           </div>
         </div>
@@ -365,5 +444,30 @@ export default function Coach() {
 
       </div>
     </AppLayout>
+  );
+}
+
+// ─── Message Bubble — extracted for reuse ────────────────────────────────────
+function MessageBubble({ msg }: { msg: any }) {
+  return (
+    <div className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
+      <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-0.5 ${
+        msg.role === "user"
+          ? "bg-primary/20"
+          : "bg-white/5 border border-white/10"
+      }`}>
+        {msg.role === "user"
+          ? <User className="h-4 w-4 text-primary" />
+          : <Bot className="h-4 w-4 text-primary" />
+        }
+      </div>
+      <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+        msg.role === "user"
+          ? "bg-primary text-primary-foreground rounded-tr-sm"
+          : "bg-card border border-border rounded-tl-sm text-foreground/90"
+      }`}>
+        {msg.content}
+      </div>
+    </div>
   );
 }
