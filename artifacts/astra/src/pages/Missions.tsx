@@ -148,6 +148,78 @@ function MissionCompleteCard({
   );
 }
 
+// ─── Loading State — shown when missions are being generated (first load of day) ─
+function MissionsLoadingState() {
+  const steps = [
+    "Analysing your recent activity...",
+    "Calibrating challenge level...",
+    "Generating your critical mission...",
+    "Building your courage challenge...",
+  ];
+  const [stepIdx, setStepIdx] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setStepIdx((i) => Math.min(i + 1, steps.length - 1));
+    }, 900);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/8 to-transparent p-8 text-center"
+    >
+      {/* Pulsing icon */}
+      <div className="flex justify-center mb-5">
+        <motion.div
+          animate={{ scale: [1, 1.12, 1], opacity: [0.7, 1, 0.7] }}
+          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+          className="w-12 h-12 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center"
+        >
+          <Zap className="w-6 h-6 text-primary" />
+        </motion.div>
+      </div>
+
+      <p className="text-xs font-bold uppercase tracking-[0.25em] text-primary/60 mb-2">Mission Control</p>
+      <h3 className="text-lg font-bold text-white mb-1">Generating your daily briefing</h3>
+      <p className="text-sm text-muted-foreground mb-6">
+        ASTRA is crafting personalised missions based on your history and streak.
+      </p>
+
+      {/* Step indicators */}
+      <div className="space-y-2 max-w-xs mx-auto text-left">
+        {steps.map((step, i) => (
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: i <= stepIdx ? 1 : 0.25, x: 0 }}
+            transition={{ delay: i * 0.2 }}
+            className="flex items-center gap-2.5"
+          >
+            <div className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors duration-500 ${
+              i < stepIdx ? "bg-emerald-400" : i === stepIdx ? "bg-primary animate-pulse" : "bg-white/15"
+            }`} />
+            <span className={`text-xs transition-colors duration-500 ${
+              i < stepIdx ? "text-emerald-400/70 line-through" : i === stepIdx ? "text-foreground/80" : "text-muted-foreground/30"
+            }`}>
+              {step}
+            </span>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Ghost skeleton below for layout continuity */}
+      <div className="mt-8 space-y-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-14 rounded-xl bg-white/3 animate-pulse" style={{ animationDelay: `${i * 0.15}s` }} />
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Missions() {
   const { data: missions, isLoading: missionsLoading } = useMissions();
@@ -236,11 +308,7 @@ export default function Missions() {
           {tab === "missions" && (
             <motion.div key="missions" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-6">
               {missionsLoading ? (
-                <div className="space-y-4">
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} className="h-24 rounded-2xl bg-card animate-pulse border border-border" />
-                  ))}
-                </div>
+                <MissionsLoadingState />
               ) : missions ? (
                 <>
                   {/* ── Mission Complete Celebration ── */}

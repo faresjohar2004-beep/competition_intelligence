@@ -1,9 +1,10 @@
 import { Router } from "express";
 import webpush from "web-push";
-import { db, pushSubscriptionsTable, usersTable } from "@workspace/db";
+import { db, pushSubscriptionsTable, usersTable, actionsTable, missionsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { requireAuthWithUser } from "../lib/auth";
 import { logger } from "../lib/logger";
+import { generateDailyMissions } from "../lib/ai";
 
 const router = Router();
 
@@ -100,6 +101,64 @@ export async function sendDailyReminders() {
         logger.error({ err, endpoint: sub.endpoint }, "Push send failed");
       }
     }
+  }
+}
+
+// ─── Cron-callable: pre-generate tomorrow's missions for active users ─────────
+// Runs at 8pm UTC so missions are ready before midnight — eliminates cold-start
+export async function preGenerateTomorrowMissions() {
+  const tomorrowStr = new Date(Date.now() + 86_400_000).toISOString().split("T")[0];
+  const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000).toISOString().split("T")[0];
+
+  const activeUsers = await db
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      streakDays: usersTable.streakDays,
+    })
+    .from(usersTable)
+    .where(sql`${usersTable.lastActiveDate} >= ${threeDaysAgo}`);
+
+  logger.info({ count: activeUsers.length, date: tomorrowStr }, "Pre-generating tomorrow's missions");
+
+  for (const user of activeUsers) {
+    // Skip if already generated
+    const [existing] = await db
+      .select({ id: missionsTable.id })
+      .from(missionsTable)
+      .where(sql`${missionsTable.userId} = ${user.id} AND ${missionsTable.date} = ${tomorrowStr}`);
+
+    if (existing) continue;
+
+    // Gather recent action context
+    const recentActions = await db
+      .select({ type: actionsTable.type })
+      .from(actionsTable)
+      .where(sql`${actionsTable.userId} = ${user.id} AND ${actionsTable.completedAt} > NOW() - INTERVAL '7 days'`)
+      .limit(20);
+
+    const actionTypes = recentActions.map((a) => a.type);
+
+    try {
+      const missions = await generateDailyMissions(user.name, actionTypes, user.streakDays);
+
+      await db.insert(missionsTable).values({
+        userId: user.id,
+        date: tomorrowStr,
+        criticalMission: missions.critical,
+        secondaryMission1: missions.secondary[0],
+        secondaryMission2: missions.secondary[1],
+        secondaryMission3: missions.secondary[2],
+        courageChallenge: missions.courage,
+      });
+
+      logger.info({ userId: user.id }, "Pre-generated tomorrow's missions");
+    } catch (err) {
+      logger.error({ err, userId: user.id }, "Failed to pre-generate missions for user");
+    }
+
+    // Stagger requests to avoid OpenAI rate limits
+    await new Promise((resolve) => setTimeout(resolve, 400));
   }
 }
 
