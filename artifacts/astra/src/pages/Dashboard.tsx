@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect } from "react";
+import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import AppLayout from "@/components/layout/AppLayout";
 import {
@@ -7,7 +7,7 @@ import {
   getGetTodayActionsQueryKey, getGetFutureSelfQueryKey, getGetUserStatsQueryKey,
 } from "@workspace/api-client-react";
 import { useAlignment, useMissions } from "@/hooks/useMissions";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,6 +15,8 @@ import {
   CheckCircle, Star, Dumbbell, BookOpen, Brain, Video, Leaf, DollarSign, PenLine,
   Laptop, Moon, Droplets, CheckCircle2, Sparkles, X, ChevronRight, Calendar, Share2, Bell, BellOff,
 } from "lucide-react";
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 // ─── Action config (shared with Actions page) ────────────────────────────────
 const ACTION_CONFIG = [
@@ -803,7 +805,11 @@ function TomorrowPreview({
                   <span className={`text-xs font-black ${tomorrowTier.wordColor}`}>{tomorrowTier.word}</span>
                 </div>
 
-                <PromiseInput onSave={onSavePromise} onSkip={onDismiss} />
+                <PromiseInput
+                  onSave={onSavePromise}
+                  onSkip={onDismiss}
+                  suggestions={PROMISE_SUGGESTIONS[lastActionType ?? ""] ?? DEFAULT_SUGGESTIONS}
+                />
               </motion.div>
             )}
 
@@ -823,15 +829,49 @@ function TomorrowPreview({
   );
 }
 
-function PromiseInput({ onSave, onSkip }: { onSave: (p: string) => void; onSkip: () => void }) {
+// ─── Smart promise suggestions by action type ─────────────────────────────────
+const PROMISE_SUGGESTIONS: Record<string, [string, string, string]> = {
+  workout:          ["Work out for 30 minutes — no excuses", "Do a full training session before noon", "Complete 20 minutes of movement, minimum"],
+  deep_work:        ["90 minutes of deep work, phone in another room", "Finish my most important task before anything else", "One 2-hour focus block — no notifications"],
+  learning:         ["Study for 45 minutes before bed", "Complete one lesson or chapter", "Learn one new thing and write it down"],
+  content_creation: ["Create one piece of content, start to finish", "Write 500 words — publish or not", "Record one video or write one post"],
+  saving:           ["Move money to savings before spending", "Track every expense today", "Review budget and cut one thing"],
+  reading:          ["Read 20 pages — no skipping", "30 minutes of reading before screens", "Finish the chapter I started"],
+  meditation:       ["10 minutes of meditation, no exceptions", "Breathe for 5 minutes before the day starts", "Meditate before I check my phone"],
+  sleep:            ["In bed by 10:30pm, screens off at 10", "Get 7–8 hours — protect my recovery", "No screens 1 hour before bed"],
+  water:            ["Drink 3L of water throughout the day", "Start the day with a full glass before coffee", "Carry my water bottle everywhere"],
+};
+
+const DEFAULT_SUGGESTIONS: [string, string, string] = [
+  "Log at least one action before noon",
+  "Complete my most important task for the day",
+  "Show up — do one thing my future self will thank me for",
+];
+
+function PromiseInput({
+  onSave,
+  onSkip,
+  suggestions,
+}: {
+  onSave: (p: string) => void;
+  onSkip: () => void;
+  suggestions: [string, string, string];
+}) {
   const [value, setValue] = useState("");
   const [saved, setSaved] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = () => {
     if (!value.trim()) return;
     setSaved(true);
     onSave(value.trim());
     setTimeout(onSkip, 800);
+  };
+
+  const handleSelect = (s: string) => {
+    setValue(s);
+    // slight delay so the value is visible before focusing
+    setTimeout(() => inputRef.current?.focus(), 50);
   };
 
   return (
@@ -844,6 +884,7 @@ function PromiseInput({ onSave, onSkip }: { onSave: (p: string) => void; onSkip:
       <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-400/60 mb-2">
         Tomorrow's Promise
       </p>
+
       {saved ? (
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
@@ -851,27 +892,51 @@ function PromiseInput({ onSave, onSkip }: { onSave: (p: string) => void; onSkip:
           className="flex items-center gap-2 text-emerald-400"
         >
           <CheckCircle2 className="w-4 h-4" />
-          <span className="text-sm font-bold">Promise saved. See you tomorrow.</span>
+          <span className="text-sm font-bold">Promise sealed. See you tomorrow.</span>
         </motion.div>
       ) : (
-        <div className="flex gap-2">
-          <input
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSave()}
-            placeholder="e.g. workout at 7am, read for 20 minutes…"
-            maxLength={120}
-            autoFocus
-            className="flex-1 h-9 px-3 rounded-xl bg-black/20 border border-emerald-500/20 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-500/40 transition-colors min-w-0"
-          />
-          <button
-            onClick={handleSave}
-            disabled={!value.trim()}
-            className="h-9 px-3 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 text-xs font-bold hover:bg-emerald-500/25 transition-all disabled:opacity-30 shrink-0 whitespace-nowrap"
-          >
-            Promise →
-          </button>
-        </div>
+        <>
+          {/* ── Suggestion chips — tap to pre-fill ── */}
+          <div className="flex flex-col gap-1.5 mb-3">
+            {suggestions.map((s, i) => (
+              <motion.button
+                key={s}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.35 + i * 0.07 }}
+                onClick={() => handleSelect(s)}
+                className={`w-full text-left text-xs px-3 py-2.5 rounded-xl border transition-all ${
+                  value === s
+                    ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-300 font-semibold"
+                    : "border-white/8 bg-white/3 text-muted-foreground hover:border-emerald-500/30 hover:bg-emerald-500/8 hover:text-white"
+                }`}
+              >
+                <span className="mr-1.5 opacity-40">{i === 0 ? "→" : i === 1 ? "→" : "→"}</span>
+                {s}
+              </motion.button>
+            ))}
+          </div>
+
+          {/* ── Free-text input ── */}
+          <div className="flex gap-2">
+            <input
+              ref={inputRef}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSave()}
+              placeholder="Or write your own…"
+              maxLength={120}
+              className="flex-1 h-9 px-3 rounded-xl bg-black/20 border border-emerald-500/20 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-500/40 transition-colors min-w-0"
+            />
+            <button
+              onClick={handleSave}
+              disabled={!value.trim()}
+              className="h-9 px-3 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 text-xs font-bold hover:bg-emerald-500/25 transition-all disabled:opacity-30 shrink-0 whitespace-nowrap"
+            >
+              Seal it →
+            </button>
+          </div>
+        </>
       )}
       {!saved && (
         <button
@@ -1350,6 +1415,62 @@ function WeeklyScorecard({ allActions, streakDays }: { allActions: any[]; streak
   );
 }
 
+// ─── Reflection Nudge Card ────────────────────────────────────────────────────
+function ReflectionNudgeCard({ actionsToday }: { actionsToday: number }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["reflections", "today"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/reflections/today`, { credentials: "include" });
+      if (!res.ok) return { reflected: false };
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+
+  const hasReflected = data?.reflected === true;
+  if (isLoading || hasReflected || actionsToday < 2) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.4 }}
+        className="rounded-2xl border border-primary/25 bg-primary/5 p-5 relative overflow-hidden"
+      >
+        <div className="absolute top-0 right-0 w-40 h-40 bg-primary/8 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex items-start gap-4">
+          <div className="shrink-0 w-10 h-10 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center mt-0.5">
+            <PenLine className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-primary/60 mb-1">
+              Strengthen Identity
+            </p>
+            <h3 className="text-base font-black text-white mb-1 leading-snug">
+              You showed up today. Now prove it to yourself.
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+              {actionsToday >= 4
+                ? `You've logged ${actionsToday} actions today — that's a strong day. Lock it in with a 2-minute reflection.`
+                : `You've logged ${actionsToday} actions today. Take 2 minutes to record who you proved you are.`}
+            </p>
+            <Link
+              href="/reflections"
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-primary/20 border border-primary/30 text-primary text-sm font-bold hover:bg-primary/30 transition-all"
+            >
+              <PenLine className="w-3.5 h-3.5" />
+              Write Today's Reflection
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 export default function Dashboard() {
   const qc = useQueryClient();
@@ -1407,7 +1528,6 @@ export default function Dashboard() {
   // ── Streak Freeze detection ──────────────────────────────────────────────
   const freezeMutation = useMutation({
     mutationFn: async () => {
-      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
       const res = await fetch(`${BASE}/api/users/me/streak-freeze`, {
         method: "POST",
         credentials: "include",
@@ -1650,6 +1770,9 @@ export default function Dashboard() {
 
         {/* Today's Evidence Strip — inline proof on the main screen */}
         <TodayEvidenceStrip actions={todayActions?.actions ?? []} />
+
+        {/* Reflection Nudge — appears after 2+ actions logged, disappears once user reflects */}
+        <ReflectionNudgeCard actionsToday={actionsToday} />
 
         {/* Notification permission — soft banner, only shows when streak ≥ 1 and not yet asked */}
         <AnimatePresence>
