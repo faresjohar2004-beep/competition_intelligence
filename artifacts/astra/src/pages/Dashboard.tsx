@@ -1415,6 +1415,67 @@ function WeeklyScorecard({ allActions, streakDays }: { allActions: any[]; streak
   );
 }
 
+// ─── Today's Gains Strip ─────────────────────────────────────────────────────
+const DAILY_IMPACT_MAP: Record<string, Record<string, number>> = {
+  workout:          { Health: 2,   Discipline: 1   },
+  deep_work:        { Discipline: 2, Wealth: 1.5   },
+  learning:         { Knowledge: 2, Wealth: 1      },
+  content_creation: { Confidence: 2, Wealth: 1.5   },
+  saving:           { Wealth: 2,   Discipline: 1   },
+  reading:          { Knowledge: 1.5               },
+  meditation:       { Discipline: 1.5              },
+  sleep:            { Health: 1.5                  },
+  water:            { Health: 1                    },
+};
+
+const SCORE_CHIP_STYLE: Record<string, string> = {
+  Health:     "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+  Discipline: "text-blue-400   bg-blue-500/10    border-blue-500/20",
+  Wealth:     "text-amber-400  bg-amber-500/10   border-amber-500/20",
+  Knowledge:  "text-violet-400 bg-violet-500/10  border-violet-500/20",
+  Confidence: "text-orange-400 bg-orange-500/10  border-orange-500/20",
+};
+
+function TodayGainsStrip({ actions }: { actions: { type: string }[] }) {
+  const totals = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const a of actions) {
+      for (const [score, delta] of Object.entries(DAILY_IMPACT_MAP[a.type] ?? {})) {
+        acc[score] = (acc[score] ?? 0) + delta;
+      }
+    }
+    return Object.entries(acc).sort((a, b) => b[1] - a[1]);
+  }, [actions]);
+
+  if (!totals.length) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.1 }}
+      className="mt-5 pt-4 border-t border-white/5"
+    >
+      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/30 mb-2.5 text-center lg:text-left">
+        Today's Gains
+      </p>
+      <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
+        {totals.map(([score, delta], i) => (
+          <motion.span
+            key={score}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.15 + i * 0.08, type: "spring", stiffness: 300 }}
+            className={`px-2.5 py-1 rounded-lg border text-xs font-bold ${SCORE_CHIP_STYLE[score] ?? "text-white bg-white/5 border-white/10"}`}
+          >
+            +{delta % 1 === 0 ? delta : delta.toFixed(1)}% {score}
+          </motion.span>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Reflection Nudge Card ────────────────────────────────────────────────────
 function ReflectionNudgeCard({ actionsToday }: { actionsToday: number }) {
   const { data, isLoading } = useQuery({
@@ -1764,6 +1825,9 @@ export default function Dashboard() {
                   <span className="text-xs text-muted-foreground">missions done</span>
                 </div>
               </div>
+
+              {/* Today's Gains — live score accumulator from today's logged actions */}
+              <TodayGainsStrip actions={todayActions?.actions ?? []} />
             </div>
           </div>
         </motion.div>
