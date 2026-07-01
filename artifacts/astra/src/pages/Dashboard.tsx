@@ -5,6 +5,7 @@ import {
   useGetMe, useGetFutureSelf, useGetTodayActions, useGetCurrentChapter, useGetUserStats,
   useLogAction, useGetActions, useUpdateMe, getGetMeQueryKey,
   getGetTodayActionsQueryKey, getGetFutureSelfQueryKey, getGetUserStatsQueryKey,
+  useGetLatestLetter,
 } from "@workspace/api-client-react";
 import { useAlignment, useMissions } from "@/hooks/useMissions";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
@@ -13,7 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap, Target, Trophy, Flame, Shield, Skull, ArrowRight, AlertTriangle,
   CheckCircle, Star, Dumbbell, BookOpen, Brain, Video, Leaf, DollarSign, PenLine,
-  Laptop, Moon, Droplets, CheckCircle2, Sparkles, X, ChevronRight, Calendar, Share2, Bell, BellOff,
+  Laptop, Moon, Droplets, CheckCircle2, Sparkles, X, ChevronRight, Calendar, Share2, Bell, BellOff, Mail,
 } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -1547,6 +1548,7 @@ export default function Dashboard() {
 
   const { data: allActionsRaw = [] } = useGetActions({ limit: 200 });
   const allActions = allActionsRaw as any[];
+  const { data: latestLetter } = useGetLatestLetter();
 
   const [justLogged, setJustLogged] = useState<string | null>(null);
   const [lastActionType, setLastActionType] = useState<string | null>(null);
@@ -1892,16 +1894,27 @@ export default function Dashboard() {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <Link href="/missions" className="block h-full rounded-2xl border border-white/5 bg-card/80 p-5 hover:border-amber-500/30 hover:bg-amber-500/5 transition-all group">
-              <div className="flex items-center justify-between mb-4">
-                <div className="rounded-xl bg-amber-500/10 p-2"><Trophy className="w-5 h-5 text-amber-400" /></div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-amber-400 transition-colors" />
-              </div>
-              <h3 className="font-bold text-white mb-1">Hall of Legends</h3>
-              <p className="text-sm text-muted-foreground mb-3">Your earned milestones</p>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-black text-amber-400">{alignment?.newMilestonesEarned?.length ?? 0}</span>
-                <span className="text-xs text-muted-foreground">new milestones available</span>
+            <Link href="/letters" className="block h-full rounded-2xl border border-white/5 bg-card/80 p-5 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all group relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-violet-500/10 transition-colors" />
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="rounded-xl bg-violet-500/10 p-2"><Mail className="w-5 h-5 text-violet-400" /></div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-violet-400 transition-colors" />
+                </div>
+                <h3 className="font-bold text-white mb-1">Future Self Letter</h3>
+                {latestLetter ? (
+                  <>
+                    <p className="text-xs font-medium text-violet-400/70 uppercase tracking-wider mb-2">Latest message</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 italic">
+                      "{(latestLetter as any).content?.slice(0, 120)}…"
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-3">Receive a message from who you're becoming.</p>
+                    <p className="text-xs font-bold text-violet-400">Read your first letter →</p>
+                  </>
+                )}
               </div>
             </Link>
           </motion.div>
