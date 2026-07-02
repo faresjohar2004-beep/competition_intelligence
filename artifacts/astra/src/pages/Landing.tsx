@@ -154,7 +154,7 @@ export default function Landing() {
             transition={{ duration: 0.5, delay: 0.35 }}
             className="flex flex-col sm:flex-row gap-3 justify-center"
           >
-            <Link href="/sign-up"
+            <Link href="/onboarding"
               className="inline-flex items-center justify-center gap-2 h-13 px-8 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-bold transition-all shadow-[0_0_30px_rgba(124,58,237,0.35)] hover:shadow-[0_0_40px_rgba(124,58,237,0.5)]">
               Start Assessment <ArrowRight className="w-4 h-4" />
             </Link>
@@ -457,7 +457,7 @@ export default function Landing() {
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
           >
-            <Link href="/sign-up"
+            <Link href="/onboarding"
               className="inline-flex items-center justify-center gap-2.5 h-14 px-10 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-base transition-all shadow-[0_0_50px_rgba(124,58,237,0.4)] hover:shadow-[0_0_60px_rgba(124,58,237,0.55)]">
               Start Assessment
               <ChevronRight className="w-5 h-5" />

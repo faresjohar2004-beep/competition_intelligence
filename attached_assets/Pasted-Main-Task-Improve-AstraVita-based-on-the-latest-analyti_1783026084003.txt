@@ -1,0 +1,208 @@
+Main Task
+
+Improve AstraVita based on the latest analytics.
+
+The analytics indicate that most visitors remain on the landing page and do not progress deeply into the product.
+
+The landing page is currently the bottleneck.
+
+The goal is to increase engagement by moving visitors into the AstraVita experience as quickly as possible.
+
+Do not redesign the website.
+
+Instead, improve the user journey.
+
+⸻
+
+Core Philosophy
+
+AstraVita is not a productivity app.
+
+It is an operating system for identity transformation.
+
+Every feature should answer:
+
+“Does this help someone become who they said they would be?”
+
+⸻
+
+Priorities
+
+1. Improve Landing Page Conversion
+
+Keep the current premium design.
+
+Strengthen the hero by encouraging immediate action.
+
+Primary CTA:
+
+Start Assessment
+
+The landing page should convince users to begin within 10 seconds.
+
+⸻
+
+2. Reduce Friction
+
+Immediately after clicking Start Assessment, guide users through a short onboarding.
+
+Questions:
+
+What do you want to improve?
+
+Discipline
+
+Fitness
+
+Focus
+
+Learning
+
+Business
+
+Consistency
+
+Biggest obstacle?
+
+Lack discipline
+
+No system
+
+Procrastination
+
+Distractions
+
+Lose motivation
+
+Start but don’t finish
+
+Commitment:
+
+7 Days
+
+30 Days
+
+90 Days
+
+No unnecessary steps.
+
+⸻
+
+3. Create Immediate Personalization
+
+After onboarding, generate:
+
+Today’s Promise
+
+Daily Action
+
+Identity Goal
+
+Future Alignment
+
+Weekly Objective
+
+Reflection Prompt
+
+The user should instantly feel the platform is personalized.
+
+⸻
+
+4. Strengthen Identity Tracking
+
+Display throughout the dashboard:
+
+Future Alignment
+
+Identity Score
+
+Current Streak
+
+Today’s Promise
+
+Weekly Progress
+
+Current Mission
+
+The platform should constantly reinforce progress toward becoming the desired identity.
+
+⸻
+
+5. Make Progress Emotional
+
+Instead of generic statistics, show:
+
+Promises Kept
+
+Current Momentum
+
+Identity Strength
+
+Days Consistent
+
+Weekly Wins
+
+The dashboard should feel like personal transformation rather than task management.
+
+⸻
+
+6. Introduce AI Guidance
+
+Prepare the platform for an AI Identity Coach.
+
+Future capabilities:
+
+Weekly Reviews
+
+Behavior Analysis
+
+Identity Insights
+
+Reflection Summaries
+
+Personalized Recommendations
+
+Keep these as premium-ready features without disrupting the current experience.
+
+⸻
+
+Design Requirements
+
+Maintain:
+
+* Black and white aesthetic
+* Strong typography
+* Minimal design
+* Premium appearance
+* Mobile-first layout
+* Fast loading
+
+Do not introduce unnecessary pages or features.
+
+⸻
+
+Core Loop
+
+Make Promise
+
+↓
+
+Take Action
+
+↓
+
+Keep Promise
+
+↓
+
+Increase Future Alignment
+
+↓
+
+Strengthen Identity
+
+↓
+
+Return Tomorrow
+
+Every improvement should make AstraVita feel less like a website and more like a daily operating system for personal growth.

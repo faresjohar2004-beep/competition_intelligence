@@ -160,7 +160,7 @@ function Router() {
             <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} forceRedirectUrl={`${basePath}/onboarding`} />
           </AuthPage>
         </Route>
-        <Route path="/onboarding"><ProtectedRoute component={Onboarding} /></Route>
+        <Route path="/onboarding" component={Onboarding} />
         <Route path="/dashboard"><ProtectedRoute component={Dashboard} /></Route>
         <Route path="/future-self"><ProtectedRoute component={FutureSelf} /></Route>
         <Route path="/life-map"><ProtectedRoute component={LifeMap} /></Route>

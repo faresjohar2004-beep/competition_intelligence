@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { useOnboardUser } from "@workspace/api-client-react";
-import { useUser } from "@clerk/react";
+import { useOnboardUser, useGetMe } from "@workspace/api-client-react";
+import { useUser, useAuth } from "@clerk/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Dumbbell, DollarSign, Brain, Zap, ArrowRight, CheckCircle2,
@@ -385,10 +385,29 @@ function CompletionScreen({
   );
 }
 
+// ─── Pending assessment persistence (guest → sign-up handoff) ────────────────
+const PENDING_KEY = "astra_pending_assessment";
+
+function LoadingBeat({ label }: { label: string }) {
+  return (
+    <div className="min-h-screen bg-[#08090f] text-foreground flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(124,58,237,0.14),transparent_60%)] pointer-events-none" />
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1.6, repeat: Infinity, ease: "linear" }}
+        className="w-12 h-12 rounded-full border-2 border-transparent border-t-primary border-l-primary/50 mb-6"
+      />
+      <p className="text-sm text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function Onboarding() {
   const [, setLocation] = useLocation();
   const { user } = useUser();
+  const { isLoaded, isSignedIn } = useAuth();
+  const { data: me, isLoading: meLoading } = useGetMe({ query: { enabled: !!isSignedIn } });
   const onboardUser = useOnboardUser();
 
   const [step, setStep] = useState<Step>(1);
@@ -397,6 +416,8 @@ export default function Onboarding() {
   const [commitment, setCommitment] = useState("");
   const [direction, setDirection] = useState<1 | -1>(1);
   const [showCompletion, setShowCompletion] = useState(false);
+  const [autoSubmitting, setAutoSubmitting] = useState(false);
+  const autoSubmitTried = useRef(false);
 
   const selections: Record<Step, string> = { 1: area, 2: challenge, 3: commitment };
   const setters: Record<Step, (v: string) => void> = { 1: setArea, 2: setChallenge, 3: setCommitment };
@@ -404,6 +425,68 @@ export default function Onboarding() {
   const currentStep = STEPS.find((s) => s.step === step)!;
   const currentValue = selections[step];
   const canAdvance = !!currentValue;
+
+  const submitAnswers = (a: string, c: string, m: string, clerkUser: NonNullable<typeof user>) => {
+    onboardUser.mutate(
+      {
+        data: {
+          clerkId:          clerkUser.id,
+          name:             clerkUser.fullName || "User",
+          email:            clerkUser.primaryEmailAddress?.emailAddress || "",
+          avatarUrl:        clerkUser.imageUrl,
+          age:              30,
+          gender:           "Prefer not to say",
+          fitnessLevel:     m === "7" ? "Beginner" : m === "30" ? "Intermediate" : "Advanced",
+          incomeRange:      "Prefer not to say",
+          career:           AREA_CAREER[a] ?? "Personal Growth",
+          mainGoals:        AREA_GOALS[a] ?? "Grow and improve every area of my life",
+          biggestStruggles: CHALLENGE_MAP[c] ?? "Staying consistent and taking daily action",
+          dailyHabits:      a === "fitness"    ? "Working out, sleeping well, eating clean"
+                          : a === "business"   ? "Learning, deep work, financial tracking"
+                          : a === "discipline" ? "Morning routines, journaling, focus blocks"
+                          : "Reading, working out, meditation, deep work",
+          currentIdentity:  `I am becoming someone who ${AREA_IDENTITY?.[a] ?? "shows up every day and keeps their promises"}.`,
+          desiredIdentity:  AREA_GOALS?.[a] ?? "Grow and improve every area of my life",
+        },
+      },
+      {
+        onSuccess: () => {
+          sessionStorage.removeItem(PENDING_KEY);
+          setAutoSubmitting(false);
+          setShowCompletion(true);
+        },
+        onError: () => {
+          setAutoSubmitting(false);
+          setStep(3);
+        },
+      }
+    );
+  };
+
+  // Restore + auto-submit a guest's answers the instant they land back here post sign-up.
+  useEffect(() => {
+    if (showCompletion) return;
+    if (!isLoaded || !isSignedIn || meLoading || !user) return;
+    if (me?.onboarded) { setLocation("/dashboard"); return; }
+    if (autoSubmitTried.current) return;
+
+    const pending = sessionStorage.getItem(PENDING_KEY);
+    if (!pending) return;
+    autoSubmitTried.current = true;
+    try {
+      const parsed = JSON.parse(pending);
+      if (parsed?.area && parsed?.challenge && parsed?.commitment) {
+        setArea(parsed.area);
+        setChallenge(parsed.challenge);
+        setCommitment(parsed.commitment);
+        setAutoSubmitting(true);
+        submitAnswers(parsed.area, parsed.challenge, parsed.commitment, user);
+      }
+    } catch {
+      sessionStorage.removeItem(PENDING_KEY);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, isSignedIn, meLoading, me, user, showCompletion]);
 
   const advance = () => {
     if (!canAdvance) return;
@@ -423,34 +506,19 @@ export default function Onboarding() {
   };
 
   const handleSubmit = () => {
-    if (!user) return;
-    onboardUser.mutate(
-      {
-        data: {
-          clerkId:          user.id,
-          name:             user.fullName || "User",
-          email:            user.primaryEmailAddress?.emailAddress || "",
-          avatarUrl:        user.imageUrl,
-          age:              30,
-          gender:           "Prefer not to say",
-          fitnessLevel:     commitment === "7" ? "Beginner" : commitment === "30" ? "Intermediate" : "Advanced",
-          incomeRange:      "Prefer not to say",
-          career:           AREA_CAREER[area] ?? "Personal Growth",
-          mainGoals:        AREA_GOALS[area] ?? "Grow and improve every area of my life",
-          biggestStruggles: CHALLENGE_MAP[challenge] ?? "Staying consistent and taking daily action",
-          dailyHabits:      area === "fitness"    ? "Working out, sleeping well, eating clean"
-                          : area === "business"   ? "Learning, deep work, financial tracking"
-                          : area === "discipline" ? "Morning routines, journaling, focus blocks"
-                          : "Reading, working out, meditation, deep work",
-          currentIdentity:  `I am becoming someone who ${AREA_IDENTITY?.[area] ?? "shows up every day and keeps their promises"}.`,
-          desiredIdentity:  AREA_GOALS?.[area] ?? "Grow and improve every area of my life",
-        },
-      },
-      { onSuccess: () => setShowCompletion(true) }
-    );
+    if (!isSignedIn || !user) {
+      sessionStorage.setItem(PENDING_KEY, JSON.stringify({ area, challenge, commitment }));
+      setLocation("/sign-up");
+      return;
+    }
+    submitAnswers(area, challenge, commitment, user);
   };
 
   const firstName = (user?.fullName || user?.firstName || "You").split(" ")[0];
+
+  if (autoSubmitting && !showCompletion) {
+    return <LoadingBeat label="Saving your profile and building your future self…" />;
+  }
 
   if (showCompletion) {
     return (
@@ -551,7 +619,11 @@ export default function Onboarding() {
                 Building your future self…
               </>
             ) : step === 3 ? (
-              <>Generate My Future Self <Zap className="w-4 h-4 fill-white" /></>
+              isSignedIn ? (
+                <>Generate My Future Self <Zap className="w-4 h-4 fill-white" /></>
+              ) : (
+                <>Create Free Account & See My Path <Zap className="w-4 h-4 fill-white" /></>
+              )
             ) : (
               <>Continue <ArrowRight className="w-4 h-4" /></>
             )}
@@ -559,7 +631,9 @@ export default function Onboarding() {
         </div>
 
         <p className="text-xs text-muted-foreground/40 text-center mt-4">
-          Takes 45 seconds · Your answers shape everything ASTRA shows you
+          {step === 3 && !isSignedIn
+            ? "One click to save your results · No credit card required"
+            : "Takes 45 seconds · Your answers shape everything ASTRA shows you"}
         </p>
       </div>
     </div>
