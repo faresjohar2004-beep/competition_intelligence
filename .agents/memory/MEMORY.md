@@ -3,3 +3,4 @@
 - [Design subagent backtick bug](backtick-bug.md) — design subagent writes escaped backticks in JSX; use python3 binary replace script to fix
 - [Generated hook naming](orval-hooks.md) — orval generates hooks matching route prefix: admin routes become useAdminGet*, not useGetAdmin*; biography mutation is useGenerateBiographyEntry
 - [Custom hooks pattern](custom-hooks.md) — new API endpoints not in orval spec go in src/hooks/ with credentials:"include" fetch; no Authorization header needed for web (cookie-based Clerk auth)
+- [Query invalidation coverage](astra-query-invalidation.md) — invalidate every query key derived from a table on mutation success, not just the one feeding the button you're building; early-return-on-empty components mask this as "not wired up"

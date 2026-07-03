@@ -4,10 +4,10 @@ import AppLayout from "@/components/layout/AppLayout";
 import {
   useGetMe, useGetFutureSelf, useGetTodayActions, useGetCurrentChapter, useGetUserStats,
   useLogAction, useGetActions, useUpdateMe, getGetMeQueryKey,
-  getGetTodayActionsQueryKey, getGetFutureSelfQueryKey, getGetUserStatsQueryKey,
+  getGetTodayActionsQueryKey, getGetFutureSelfQueryKey, getGetUserStatsQueryKey, getGetActionsQueryKey,
   useGetLatestLetter,
 } from "@workspace/api-client-react";
-import { useAlignment, useMissions } from "@/hooks/useMissions";
+import { useAlignment, useMissions, useCompleteMission } from "@/hooks/useMissions";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,6 +15,7 @@ import {
   Zap, Target, Trophy, Flame, Shield, Skull, ArrowRight, AlertTriangle,
   CheckCircle, Star, Dumbbell, BookOpen, Brain, Video, Leaf, DollarSign, PenLine,
   Laptop, Moon, Droplets, CheckCircle2, Sparkles, X, ChevronRight, Calendar, Share2, Bell, BellOff, Mail,
+  TrendingUp,
 } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -30,6 +31,7 @@ const ACTION_CONFIG = [
   { type: "meditation",       label: "Meditation",       icon: Leaf,       color: "teal",    impact: "+1.5% Discipline",              identity: "You are someone who masters their own mind." },
   { type: "sleep",            label: "Sleep",            icon: Moon,       color: "sky",     impact: "+1.5% Health",                  identity: "You are someone who plays the long game." },
   { type: "water",            label: "Water Intake",     icon: Droplets,   color: "cyan",    impact: "+1% Health",                    identity: "You are someone who takes care of their body." },
+  { type: "promise",          label: "Promise Kept",     icon: Sparkles,   color: "violet",  impact: "+1.5% Discipline, +1.5% Confidence", identity: "You are someone who keeps their word to themselves." },
 ];
 
 const COLOR_MAP: Record<string, { text: string; bg: string; ring: string; border: string }> = {
@@ -272,6 +274,374 @@ function DailyBriefing({
           <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-1.5 leading-none">Today</p>
           <p className={`text-sm font-black leading-none ${tier.wordColor}`}>{tier.word}</p>
         </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Celebration Burst — shared micro-interaction ────────────────────────────
+function CelebrationBurst({ color = "#7c3aed" }: { color?: string }) {
+  const particles = useMemo(() => Array.from({ length: 10 }, (_, i) => ({
+    id: i,
+    angle: (i / 10) * Math.PI * 2,
+    dist: 40 + Math.random() * 30,
+  })), []);
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-visible flex items-center justify-center z-20">
+      {particles.map((p) => (
+        <motion.span
+          key={p.id}
+          initial={{ opacity: 1, x: 0, y: 0, scale: 0 }}
+          animate={{
+            opacity: 0,
+            x: Math.cos(p.angle) * p.dist,
+            y: Math.sin(p.angle) * p.dist,
+            scale: 1,
+          }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="absolute w-1.5 h-1.5 rounded-full"
+          style={{ backgroundColor: color }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Command Stats Bar — the 4 headline numbers, leading the dashboard ───────
+function CommandStatsBar({
+  alignScore,
+  identityScore,
+  streakDays,
+  promiseKept,
+  promiseLoading,
+}: {
+  alignScore: number;
+  identityScore: number;
+  streakDays: number;
+  promiseKept: boolean;
+  promiseLoading: boolean;
+}) {
+  const tiles = [
+    {
+      label: "Future Alignment",
+      value: `${alignScore}%`,
+      icon: Target,
+      color: "text-primary",
+      bg: "bg-primary/10",
+      border: "border-primary/20",
+      sub: "How aligned today is",
+    },
+    {
+      label: "Identity Score",
+      value: `${identityScore}%`,
+      icon: Shield,
+      color: "text-blue-400",
+      bg: "bg-blue-500/10",
+      border: "border-blue-500/20",
+      sub: "Who you're becoming",
+    },
+    {
+      label: "Current Streak",
+      value: `${streakDays}`,
+      icon: Flame,
+      color: "text-orange-400",
+      bg: "bg-orange-500/10",
+      border: "border-orange-500/20",
+      sub: streakDays === 1 ? "day" : "days",
+    },
+    {
+      label: "Today's Promise",
+      value: promiseLoading ? "…" : promiseKept ? "Kept" : "Pending",
+      icon: promiseKept ? CheckCircle2 : Sparkles,
+      color: promiseKept ? "text-emerald-400" : "text-violet-400",
+      bg: promiseKept ? "bg-emerald-500/10" : "bg-violet-500/10",
+      border: promiseKept ? "border-emerald-500/20" : "border-violet-500/20",
+      sub: promiseKept ? "Identity strengthened" : "Not yet kept",
+    },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.05 }}
+      className="grid grid-cols-2 lg:grid-cols-4 gap-3"
+    >
+      {tiles.map((t, i) => (
+        <motion.div
+          key={t.label}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 + i * 0.05 }}
+          className={`rounded-2xl border ${t.border} ${t.bg} p-4 relative overflow-hidden`}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <t.icon className={`w-3.5 h-3.5 ${t.color} shrink-0`} />
+            <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/40 truncate">{t.label}</p>
+          </div>
+          <p className={`text-2xl font-black leading-none ${t.color}`}>{t.value}</p>
+          <p className="text-[10px] text-white/25 mt-1.5 truncate">{t.sub}</p>
+        </motion.div>
+      ))}
+    </motion.div>
+  );
+}
+
+// ─── Today's Promise Card — the single daily commitment ──────────────────────
+function TodaysPromiseCard({
+  promiseText,
+  isCompleted,
+  isLoading,
+  onKeep,
+  isPending,
+  alignScore,
+}: {
+  promiseText: string | null;
+  isCompleted: boolean;
+  isLoading: boolean;
+  onKeep: () => void;
+  isPending: boolean;
+  alignScore: number;
+}) {
+  const [justCompleted, setJustCompleted] = useState(false);
+
+  const handleClick = useCallback(() => {
+    setJustCompleted(true);
+    onKeep();
+    setTimeout(() => setJustCompleted(false), 1400);
+  }, [onKeep]);
+
+  if (isLoading) {
+    return <div className="h-40 rounded-3xl border border-white/5 bg-white/[0.02] animate-pulse" />;
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, delay: 0.1 }}
+      className={`rounded-3xl border p-6 sm:p-7 relative overflow-hidden ${
+        isCompleted
+          ? "border-emerald-500/30 bg-gradient-to-br from-emerald-500/8 via-[#0d1017] to-[#0a0c14]"
+          : "border-primary/25 bg-gradient-to-br from-primary/8 via-[#0d1017] to-[#0a0c14]"
+      }`}
+    >
+      <div className={`absolute top-0 right-0 w-56 h-56 rounded-full blur-3xl pointer-events-none ${
+        isCompleted ? "bg-emerald-500/8" : "bg-primary/10"
+      }`} />
+      <AnimatePresence>{justCompleted && <CelebrationBurst color={isCompleted ? "#34d399" : "#7c3aed"} />}</AnimatePresence>
+
+      <div className="relative z-10">
+        <div className="flex items-center gap-2 mb-4">
+          <div className={`w-6 h-6 rounded-full border flex items-center justify-center ${
+            isCompleted ? "bg-emerald-500/20 border-emerald-500/40" : "bg-primary/20 border-primary/40"
+          }`}>
+            {isCompleted
+              ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              : <Sparkles className="w-3.5 h-3.5 text-primary" />}
+          </div>
+          <p className={`text-xs font-bold uppercase tracking-[0.25em] ${isCompleted ? "text-emerald-400" : "text-primary/80"}`}>
+            Today's Promise
+          </p>
+        </div>
+
+        <AnimatePresence mode="wait">
+          {isCompleted ? (
+            <motion.div key="done" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <h2 className="text-xl sm:text-2xl font-black text-white leading-snug mb-3">
+                Promise kept. You are who you said you'd be.
+              </h2>
+              <p className="text-sm text-emerald-300/70 italic mb-5">"{promiseText}"</p>
+              <div className="flex flex-wrap gap-2">
+                <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/15 border border-emerald-500/25 text-emerald-400">
+                  +1.5% Discipline
+                </span>
+                <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/15 border border-emerald-500/25 text-emerald-400">
+                  +1.5% Confidence
+                </span>
+                <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-primary/15 border border-primary/25 text-primary">
+                  {alignScore}% Aligned
+                </span>
+                <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white/8 border border-white/10 text-white/70">
+                  Identity Strengthened
+                </span>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div key="pending" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <h2 className="text-xl sm:text-2xl font-black text-white leading-snug mb-2">
+                {promiseText ?? "Set your first promise by logging an action."}
+              </h2>
+              <p className="text-sm text-muted-foreground mb-5">
+                One commitment. Total focus. Keep it and prove who you're becoming.
+              </p>
+              <button
+                onClick={handleClick}
+                disabled={isPending || !promiseText}
+                className="h-12 px-6 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-sm transition-all disabled:opacity-40 flex items-center gap-2"
+              >
+                {isPending ? "Sealing…" : "Keep My Promise"}
+                {!isPending && <ArrowRight className="w-4 h-4" />}
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Identity Progress Card — trait bars ─────────────────────────────────────
+function IdentityProgressCard({
+  consistency,
+  discipline,
+  focus,
+}: {
+  consistency: number;
+  discipline: number;
+  focus: number;
+}) {
+  const traits = [
+    { label: "Consistency", value: consistency, icon: Flame, color: "from-orange-500 to-amber-400", text: "text-orange-400" },
+    { label: "Discipline", value: discipline, icon: Shield, color: "from-blue-500 to-cyan-400", text: "text-blue-400" },
+    { label: "Focus", value: focus, icon: Brain, color: "from-violet-500 to-purple-400", text: "text-violet-400" },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.15 }}
+      className="rounded-3xl border border-white/5 bg-gradient-to-br from-[#0f0f1a] via-[#0d1017] to-[#0a0c14] p-6 relative overflow-hidden"
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_0%,rgba(124,58,237,0.06),transparent_60%)]" />
+      <div className="relative z-10">
+        <div className="flex items-center gap-2.5 mb-5">
+          <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+            <Shield className="w-3.5 h-3.5 text-white/60" />
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.3em] font-bold text-white/40">Identity Progress</p>
+            <p className="text-xs font-bold text-white leading-none mt-0.5">The traits you're building</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {traits.map((t, i) => (
+            <div key={t.label}>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <t.icon className={`w-3.5 h-3.5 ${t.text}`} />
+                  <span className="text-sm font-bold text-white">{t.label}</span>
+                </div>
+                <span className={`text-sm font-black ${t.text}`}>{Math.round(t.value)}%</span>
+              </div>
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.max(2, Math.min(100, t.value))}%` }}
+                  transition={{ duration: 0.9, delay: 0.2 + i * 0.1, ease: "easeOut" }}
+                  className={`h-full rounded-full bg-gradient-to-r ${t.color}`}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Reflection Unlock Card — end-of-day identity capture ────────────────────
+const REFLECTION_UNLOCK_PROMPTS = [
+  { key: "q1", label: "Today's action", question: "What did you do today that your future self would be proud of?" },
+  { key: "q2", label: "Who you proved you are", question: "What kind of person did your actions prove you are today?" },
+  { key: "q3", label: "From your future self", question: "What would your future self say about how you showed up today?" },
+];
+
+function ReflectionUnlockCard({ onSubmitted }: { onSubmitted: () => void }) {
+  const qc = useQueryClient();
+  const [answers, setAnswers] = useState<Record<string, string>>({ q1: "", q2: "", q3: "" });
+  const [saved, setSaved] = useState(false);
+
+  const submit = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${BASE}/api/reflections`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...answers, moodScore: 5, type: "daily" }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      setSaved(true);
+      qc.invalidateQueries({ queryKey: ["reflections"] });
+      qc.invalidateQueries({ queryKey: getGetTodayActionsQueryKey() });
+      qc.invalidateQueries({ queryKey: getGetFutureSelfQueryKey() });
+      onSubmitted();
+    },
+  });
+
+  const canSave = answers.q1.trim() || answers.q2.trim() || answers.q3.trim();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.4 }}
+      className="rounded-3xl border border-amber-400/30 bg-gradient-to-br from-amber-500/8 via-[#0d1017] to-[#0a0c14] p-6 relative overflow-hidden"
+    >
+      <div className="absolute top-0 right-0 w-56 h-56 bg-amber-400/8 rounded-full blur-3xl pointer-events-none" />
+      <AnimatePresence>{saved && <CelebrationBurst color="#fbbf24" />}</AnimatePresence>
+
+      <div className="relative z-10">
+        <div className="flex items-center gap-2 mb-3">
+          <Trophy className="w-4 h-4 text-amber-400" />
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-400">
+            Today's Reflection Unlocked
+          </p>
+        </div>
+
+        {saved ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-4 text-center">
+            <Sparkles className="w-7 h-7 text-amber-400 mx-auto mb-2" />
+            <p className="text-base font-black text-white">Day sealed. Identity strengthened.</p>
+            <p className="text-sm text-muted-foreground mt-1">This reflection is now permanent proof — added to your timeline.</p>
+          </motion.div>
+        ) : (
+          <>
+            <h3 className="text-lg font-black text-white mb-1.5 leading-snug">
+              All promises kept today. Lock it in.
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              You finished everything you set out to do. Take two minutes to capture who that makes you.
+            </p>
+            <div className="space-y-3">
+              {REFLECTION_UNLOCK_PROMPTS.map((p) => (
+                <div key={p.key}>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-400/70 mb-1">{p.label}</p>
+                  <textarea
+                    value={answers[p.key]}
+                    onChange={(e) => setAnswers((prev) => ({ ...prev, [p.key]: e.target.value }))}
+                    placeholder={p.question}
+                    rows={2}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/20 border border-amber-400/15 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-amber-400/40 transition-colors resize-none"
+                  />
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => submit.mutate()}
+              disabled={!canSave || submit.isPending}
+              className="mt-4 w-full h-11 rounded-xl bg-amber-500/20 border border-amber-400/35 text-amber-300 font-bold text-sm hover:bg-amber-500/30 transition-all disabled:opacity-30"
+            >
+              {submit.isPending ? "Sealing the day…" : "Complete Today's Reflection →"}
+            </button>
+          </>
+        )}
       </div>
     </motion.div>
   );
@@ -1028,7 +1398,7 @@ function TodayEvidenceStrip({ actions }: { actions: any[] }) {
               <Shield className="w-3.5 h-3.5 text-primary" />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-[0.3em] font-bold text-primary/60">Today's Evidence</p>
+              <p className="text-[10px] uppercase tracking-[0.3em] font-bold text-primary/60">Promises Kept</p>
               <p className="text-xs font-bold text-white leading-none mt-0.5">
                 {actions.length === 0 ? "No promises kept yet" : `${actions.length} promise${actions.length !== 1 ? "s" : ""} kept today`}
               </p>
@@ -1060,7 +1430,7 @@ function TodayEvidenceStrip({ actions }: { actions: any[] }) {
                 const cfg = ACTION_CONFIG.find((a) => a.type === action.type) ?? ACTION_CONFIG[0];
                 const Icon = cfg.icon;
                 const clr = COLOR_MAP[cfg.color] ?? COLOR_MAP["indigo"];
-                const time = new Date(action.loggedAt ?? action.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+                const time = new Date(action.completedAt ?? action.loggedAt ?? action.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
                 return (
                   <motion.div
                     key={action.id ?? i}
@@ -1254,7 +1624,7 @@ const WEEK_SENTENCE: Record<string, string> = {
   water:            "The week you started caring for the basics.",
 };
 
-function WeeklyScorecard({ allActions, streakDays }: { allActions: any[]; streakDays: number }) {
+function WeeklyScorecard({ allActions, streakDays, alignScore, identityScore }: { allActions: any[]; streakDays: number; alignScore: number; identityScore: number }) {
   const todayMidnight = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -1277,7 +1647,7 @@ function WeeklyScorecard({ allActions, streakDays }: { allActions: any[]; streak
     return d;
   }, [todayMidnight]);
 
-  const { weekActions, dayMap, totalThisWeek, activeDaysThisWeek, topType } = useMemo(() => {
+  const { weekActions, dayMap, totalThisWeek, activeDaysThisWeek, topType, promisesKeptThisWeek } = useMemo(() => {
     const week = allActions.filter((a: any) => new Date(a.completedAt) >= sevenDaysAgo);
     const map: Record<string, number> = {};
     const types: Record<string, number> = {};
@@ -1293,8 +1663,33 @@ function WeeklyScorecard({ allActions, streakDays }: { allActions: any[]; streak
       totalThisWeek: week.length,
       activeDaysThisWeek: Object.values(map).filter(n => n > 0).length,
       topType: top,
+      promisesKeptThisWeek: week.filter((a: any) => a.type === "promise").length,
     };
   }, [allActions, sevenDaysAgo]);
+
+  const { longestStreak, weekTrendPct } = useMemo(() => {
+    const daySet = new Set(allActions
+      .filter((a: any) => a.type !== "streak_freeze")
+      .map((a: any) => new Date(a.completedAt).toISOString().split("T")[0]));
+    const sortedDays = Array.from(daySet).sort();
+    let maxStreak = sortedDays.length ? 1 : 0, cur = 1;
+    for (let i = 1; i < sortedDays.length; i++) {
+      const diff = (new Date(sortedDays[i]).getTime() - new Date(sortedDays[i - 1]).getTime()) / 86400000;
+      if (diff === 1) { cur++; maxStreak = Math.max(maxStreak, cur); }
+      else cur = 1;
+    }
+    const fourteenDaysAgo = new Date(sevenDaysAgo);
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 7);
+    const prevWeekCount = allActions.filter((a: any) => {
+      const t = new Date(a.completedAt);
+      return t >= fourteenDaysAgo && t < sevenDaysAgo;
+    }).length;
+    const thisWeekCount = allActions.filter((a: any) => new Date(a.completedAt) >= sevenDaysAgo).length;
+    const trend = prevWeekCount === 0
+      ? (thisWeekCount > 0 ? 100 : 0)
+      : Math.round(((thisWeekCount - prevWeekCount) / prevWeekCount) * 100);
+    return { longestStreak: Math.max(maxStreak, streakDays), weekTrendPct: trend };
+  }, [allActions, sevenDaysAgo, streakDays]);
 
   if (totalThisWeek === 0) return null;
 
@@ -1334,7 +1729,7 @@ function WeeklyScorecard({ allActions, streakDays }: { allActions: any[]; streak
             <p className={`text-[10px] font-bold uppercase tracking-[0.25em] ${
               perfectWeek ? "text-amber-400/70" : "text-primary/60"
             }`}>
-              {perfectWeek ? "⚡ Perfect Week" : "Weekly Scorecard"}
+              {perfectWeek ? "⚡ Perfect Week" : "Daily Momentum"}
             </p>
             <h3 className="text-base font-bold text-white">Last 7 Days</h3>
           </div>
@@ -1345,6 +1740,31 @@ function WeeklyScorecard({ allActions, streakDays }: { allActions: any[]; streak
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">days active</div>
         </div>
+      </div>
+
+      {/* Momentum summary tiles */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-5">
+        {[
+          { label: "Promises Kept", value: promisesKeptThisWeek, icon: Sparkles, color: "text-violet-400", bg: "bg-violet-500/8", border: "border-violet-500/15" },
+          { label: "Current Streak", value: `${streakDays}d`, icon: Flame, color: "text-orange-400", bg: "bg-orange-500/8", border: "border-orange-500/15" },
+          { label: "Longest Streak", value: `${longestStreak}d`, icon: Trophy, color: "text-amber-400", bg: "bg-amber-500/8", border: "border-amber-500/15" },
+          { label: "Identity Score", value: `${Math.round(identityScore)}%`, icon: Shield, color: "text-blue-400", bg: "bg-blue-500/8", border: "border-blue-500/15" },
+        ].map((tile) => (
+          <div key={tile.label} className={`rounded-xl border ${tile.border} ${tile.bg} p-3 text-center`}>
+            <tile.icon className={`w-3.5 h-3.5 ${tile.color} mx-auto mb-1.5`} />
+            <p className={`text-lg font-black leading-none ${tile.color}`}>{tile.value}</p>
+            <p className="text-[9px] text-white/30 mt-1 leading-tight">{tile.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Alignment trend */}
+      <div className="flex items-center gap-2 mb-5 px-3.5 py-2 rounded-xl bg-white/3 border border-white/5 w-fit">
+        <TrendingUp className={`w-3.5 h-3.5 ${weekTrendPct >= 0 ? "text-emerald-400" : "text-red-400 rotate-180"}`} />
+        <span className={`text-xs font-bold ${weekTrendPct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+          {weekTrendPct >= 0 ? "+" : ""}{weekTrendPct}%
+        </span>
+        <span className="text-xs text-muted-foreground">vs last week · {alignScore}% aligned now</span>
       </div>
 
       {/* 7-day activity grid */}
@@ -1427,6 +1847,7 @@ const DAILY_IMPACT_MAP: Record<string, Record<string, number>> = {
   meditation:       { Discipline: 1.5              },
   sleep:            { Health: 1.5                  },
   water:            { Health: 1                    },
+  promise:          { Discipline: 1.5, Confidence: 1.5 },
 };
 
 const SCORE_CHIP_STYLE: Record<string, string> = {
@@ -1478,7 +1899,7 @@ function TodayGainsStrip({ actions }: { actions: { type: string }[] }) {
 }
 
 // ─── Reflection Nudge Card ────────────────────────────────────────────────────
-function ReflectionNudgeCard({ actionsToday }: { actionsToday: number }) {
+function ReflectionNudgeCard({ actionsToday, allPromisesKept }: { actionsToday: number; allPromisesKept: boolean }) {
   const { data, isLoading } = useQuery({
     queryKey: ["reflections", "today"],
     queryFn: async () => {
@@ -1490,7 +1911,7 @@ function ReflectionNudgeCard({ actionsToday }: { actionsToday: number }) {
   });
 
   const hasReflected = data?.reflected === true;
-  if (isLoading || hasReflected || actionsToday < 2) return null;
+  if (isLoading || hasReflected || actionsToday < 2 || allPromisesKept) return null;
 
   return (
     <AnimatePresence>
@@ -1542,9 +1963,10 @@ export default function Dashboard() {
   const { data: todayActions } = useGetTodayActions();
   const { data: currentChapter } = useGetCurrentChapter();
   const { data: alignment, isLoading: alignLoading } = useAlignment();
-  const { data: missions } = useMissions();
+  const { data: missions, isLoading: missionsLoading } = useMissions();
   const logAction = useLogAction();
   const updateMe = useUpdateMe();
+  const completeMission = useCompleteMission();
 
   const { data: allActionsRaw = [] } = useGetActions({ limit: 200 });
   const allActions = allActionsRaw as any[];
@@ -1573,6 +1995,53 @@ export default function Dashboard() {
   const firstName = user?.name?.split(" ")[0] ?? "Explorer";
   const streakDays = stats?.streakDays ?? 0;
   const actionsToday = todayActions?.actions?.length ?? 0;
+  const identityScore = currentSelf?.overallScore ?? 0;
+
+  const loggedTypesForPromise = useMemo(
+    () => new Set((todayActions?.actions ?? []).map((a: any) => a.type)),
+    [todayActions],
+  );
+  const promiseText: string | null = missions?.criticalMission ?? tomorrowPromise ?? null;
+  const promiseCompleted: boolean = missions?.criticalCompleted ?? false;
+
+  const handleKeepPromise = useCallback(() => {
+    completeMission.mutate("critical", {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: ["missions"] });
+        if (!loggedTypesForPromise.has("promise")) {
+          logAction.mutate({ data: { type: "promise" } } as any, {
+            onSuccess: () => {
+              qc.invalidateQueries({ queryKey: getGetTodayActionsQueryKey() });
+              qc.invalidateQueries({ queryKey: getGetFutureSelfQueryKey() });
+              qc.invalidateQueries({ queryKey: getGetUserStatsQueryKey() });
+              qc.invalidateQueries({ queryKey: getGetActionsQueryKey() });
+            },
+          });
+        }
+      },
+    });
+  }, [completeMission, qc, loggedTypesForPromise, logAction]);
+
+  const consistencyPct = useMemo(() => {
+    const days = new Set<string>();
+    const cutoff = Date.now() - 7 * 86400000;
+    allActions.forEach((a: any) => {
+      const t = new Date(a.completedAt).getTime();
+      if (t >= cutoff) days.add(new Date(a.completedAt).toISOString().split("T")[0]);
+    });
+    return Math.round((days.size / 7) * 100);
+  }, [allActions]);
+
+  const { data: reflectionToday } = useQuery({
+    queryKey: ["reflections", "today"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/reflections/today`, { credentials: "include" });
+      if (!res.ok) return { reflected: false };
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+  const hasReflectedToday = reflectionToday?.reflected === true;
 
   const CAREER_TO_IDENTITY: Record<string, string> = {
     "Mindset & Discipline":       "someone who shows up when it's hard",
@@ -1653,6 +2122,7 @@ export default function Dashboard() {
         qc.invalidateQueries({ queryKey: getGetTodayActionsQueryKey() });
         qc.invalidateQueries({ queryKey: getGetFutureSelfQueryKey() });
         qc.invalidateQueries({ queryKey: getGetUserStatsQueryKey() });
+        qc.invalidateQueries({ queryKey: getGetActionsQueryKey() });
         // Clear yesterday's promise once they start acting on it
         if (actionsToday === 0 && tomorrowPromise) {
           updateMe.mutate({ data: { tomorrowPromise: "" } } as any, {
@@ -1688,6 +2158,32 @@ export default function Dashboard() {
           actionsToday={actionsToday}
           alignScore={alignScore}
           tomorrowPromise={tomorrowPromise}
+        />
+
+        {/* Command Stats Bar — Future Alignment, Identity Score, Streak, Today's Promise */}
+        <CommandStatsBar
+          alignScore={alignScore}
+          identityScore={Math.round(identityScore)}
+          streakDays={streakDays}
+          promiseKept={promiseCompleted}
+          promiseLoading={missionsLoading}
+        />
+
+        {/* Today's Promise — the single daily commitment */}
+        <TodaysPromiseCard
+          promiseText={promiseText}
+          isCompleted={promiseCompleted}
+          isLoading={missionsLoading}
+          onKeep={handleKeepPromise}
+          isPending={completeMission.isPending}
+          alignScore={alignScore}
+        />
+
+        {/* Identity Progress — the traits being built */}
+        <IdentityProgressCard
+          consistency={consistencyPct}
+          discipline={currentSelf?.disciplineScore ?? 0}
+          focus={currentSelf?.confidenceScore ?? 0}
         />
 
         {/* Identity Statement Strip */}
@@ -1838,7 +2334,14 @@ export default function Dashboard() {
         <TodayEvidenceStrip actions={todayActions?.actions ?? []} />
 
         {/* Reflection Nudge — appears after 2+ actions logged, disappears once user reflects */}
-        <ReflectionNudgeCard actionsToday={actionsToday} />
+        <ReflectionNudgeCard actionsToday={actionsToday} allPromisesKept={completedMissions === 5} />
+
+        {/* Reflection Unlock — end-of-day capture once every promise is kept */}
+        <AnimatePresence>
+          {completedMissions === 5 && !hasReflectedToday && (
+            <ReflectionUnlockCard onSubmitted={() => qc.invalidateQueries({ queryKey: ["reflections"] })} />
+          )}
+        </AnimatePresence>
 
         {/* Notification permission — soft banner, only shows when streak ≥ 1 and not yet asked */}
         <AnimatePresence>
@@ -1955,8 +2458,8 @@ export default function Dashboard() {
           </motion.div>
         </div>
 
-        {/* Weekly Scorecard — last 7 days ritual */}
-        <WeeklyScorecard allActions={allActions} streakDays={streakDays} />
+        {/* Daily Momentum — last 7 days ritual */}
+        <WeeklyScorecard allActions={allActions} streakDays={streakDays} alignScore={alignScore} identityScore={identityScore} />
 
       </div>
     </AppLayout>

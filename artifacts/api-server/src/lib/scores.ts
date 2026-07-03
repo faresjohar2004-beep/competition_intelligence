@@ -7,7 +7,8 @@ export type ActionType =
   | "saving"
   | "deep_work"
   | "sleep"
-  | "water";
+  | "water"
+  | "promise";
 
 export type ScoreImpact = {
   healthDelta: number;
@@ -90,6 +91,14 @@ const ACTION_IMPACTS: Record<ActionType, ScoreImpact> = {
     confidenceDelta: 0,
     knowledgeDelta: 0,
     message: "+1% Health",
+  },
+  promise: {
+    healthDelta: 0,
+    wealthDelta: 0,
+    disciplineDelta: 1.5,
+    confidenceDelta: 1.5,
+    knowledgeDelta: 0,
+    message: "+1.5% Discipline, +1.5% Confidence — Promise Kept",
   },
 };
 

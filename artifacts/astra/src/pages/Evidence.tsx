@@ -28,6 +28,7 @@ const ACTION_DISPLAY: Record<string, {
   sleep:            { label: "Quality Sleep",    icon: Moon,       color: "text-sky-400",     bg: "bg-sky-500/10",     border: "border-sky-500/20",     identity: "You are someone who plays the long game.",                       verb: "playing the long game",   hours: 0 },
   water:            { label: "Water Intake",     icon: Droplets,   color: "text-cyan-400",    bg: "bg-cyan-500/10",    border: "border-cyan-500/20",    identity: "You are someone who takes care of their body.",                  verb: "physically disciplined",  hours: 0 },
   reflection:       { label: "Reflection",       icon: BookOpen,   color: "text-primary/80",  bg: "bg-primary/10",     border: "border-primary/20",    identity: "You are someone who knows themselves deeply enough to grow.",     verb: "deeply self-aware",       hours: 0.33 },
+  promise:          { label: "Promise Kept",     icon: Star,       color: "text-violet-400",  bg: "bg-violet-500/10", border: "border-violet-500/20", identity: "You are someone who keeps their word to themselves.",             verb: "someone who keeps their word", hours: 0.25 },
 };
 const FALLBACK = ACTION_DISPLAY["deep_work"];
 

@@ -1,0 +1,218 @@
+Main Task:
+
+Improve Astra OS based on the latest analytics.
+
+Users are now progressing beyond the landing page and interacting with the daily actions system.
+
+The next objective is to increase activation, retention, and daily usage by making Astra OS feel like an operating system for becoming your future self—not a task manager.
+
+Do not redesign the application.
+
+Improve the existing experience.
+
+--------------------------------------------------
+
+PRIORITY 1 — MAKE THE DASHBOARD FEEL ALIVE
+
+The dashboard should immediately answer:
+
+• Who am I becoming?
+• What should I do today?
+• Am I closer than yesterday?
+
+Display at the top:
+
+• Future Alignment
+• Identity Score
+• Current Streak
+• Today's Promise
+
+These should be the first things users see.
+
+--------------------------------------------------
+
+PRIORITY 2 — TODAY'S PROMISE
+
+Replace generic tasks with a single clear commitment.
+
+Example:
+
+TODAY'S PROMISE
+
+Read 10 Pages
+
+Estimated Time: 15 Minutes
+
+Identity Impact:
++2%
+
+Primary CTA:
+
+KEEP MY PROMISE
+
+After completion display:
+
+✓ Promise Kept
+
++25 XP
+
+Future Alignment +2%
+
+Identity Strengthened
+
+--------------------------------------------------
+
+PRIORITY 3 — SHOW IDENTITY PROGRESS
+
+Create an Identity Progress card.
+
+Example:
+
+Current Identity
+
+Consistency 61%
+
+Discipline 72%
+
+Focus 58%
+
+Display these as clean progress rings or bars.
+
+Users should immediately feel they are becoming someone.
+
+--------------------------------------------------
+
+PRIORITY 4 — PROMISES KEPT
+
+Replace generic activity history with an identity-driven timeline.
+
+Rename it:
+
+PROMISES KEPT
+
+Display cards such as:
+
+✓ Workout Completed
+
+✓ Read 20 Pages
+
+✓ Journal Completed
+
+✓ Business Session Completed
+
+✓ No Sugar Today
+
+Every completed action becomes proof of identity.
+
+--------------------------------------------------
+
+PRIORITY 5 — DAILY MOMENTUM
+
+Create a Momentum section displaying:
+
+• Promises Kept This Week
+
+• Current Streak
+
+• Longest Streak
+
+• Future Alignment Trend
+
+• Weekly Identity Score
+
+Keep it visual and motivating.
+
+--------------------------------------------------
+
+PRIORITY 6 — END OF DAY REFLECTION
+
+When all daily promises are completed, unlock:
+
+TODAY'S REFLECTION
+
+Ask:
+
+• What did you learn today?
+
+• What challenged you?
+
+• What promise will you keep tomorrow?
+
+Store reflections inside a personal timeline so users can look back on their growth.
+
+--------------------------------------------------
+
+PRIORITY 7 — MICRO INTERACTIONS
+
+Celebrate every completed promise.
+
+Examples:
+
+✓ Promise Kept
+
+Future Alignment +2%
+
+Identity +1
+
+Momentum Increased
+
+Use premium, subtle animations that reinforce progress without feeling distracting.
+
+--------------------------------------------------
+
+DESIGN
+
+Keep the existing Astra OS visual identity.
+
+Do not change the branding or color palette.
+
+Use:
+
+• Deep Black Background
+• Purple / Violet Accent Colors
+• Premium Glassmorphism
+• Futuristic Interface
+• Minimal Layout
+• Mobile First
+• Strong Typography
+• Smooth Micro-Animations
+• Soft Purple Glow Effects
+• High Contrast
+• Clean Spacing
+• Fast Performance
+
+The experience should feel closer to a premium operating system than a traditional productivity app.
+
+--------------------------------------------------
+
+CORE LOOP
+
+Make Promise
+
+↓
+
+Take Action
+
+↓
+
+Keep Promise
+
+↓
+
+Collect Evidence
+
+↓
+
+Increase Future Alignment
+
+↓
+
+Strengthen Identity
+
+↓
+
+Return Tomorrow
+
+Every new feature should reinforce this loop.
+
+The goal is to make Astra OS the operating system people open every morning and every evening because it reminds them who they are becoming—not just what they need to do.
