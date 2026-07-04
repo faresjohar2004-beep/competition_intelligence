@@ -2123,6 +2123,14 @@ export default function Dashboard() {
         qc.invalidateQueries({ queryKey: getGetFutureSelfQueryKey() });
         qc.invalidateQueries({ queryKey: getGetUserStatsQueryKey() });
         qc.invalidateQueries({ queryKey: getGetActionsQueryKey() });
+        // Showing up and doing real work today IS keeping the promise —
+        // reconcile Quick Log with Today's Promise so the payoff always fires,
+        // regardless of which CTA the user used to take action.
+        if (!missions?.criticalCompleted) {
+          completeMission.mutate("critical", {
+            onSuccess: () => qc.invalidateQueries({ queryKey: ["missions"] }),
+          });
+        }
         // Clear yesterday's promise once they start acting on it
         if (actionsToday === 0 && tomorrowPromise) {
           updateMe.mutate({ data: { tomorrowPromise: "" } } as any, {
@@ -2145,7 +2153,7 @@ export default function Dashboard() {
       },
       onSettled: () => setLoggingType(null),
     });
-  }, [loggingType, logAction, qc, actionsToday, streakDays]);
+  }, [loggingType, logAction, qc, actionsToday, streakDays, missions, completeMission, tomorrowPromise, updateMe]);
 
   return (
     <AppLayout>
