@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/components/layout/AppLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, CheckCircle2, Sparkles, ChevronDown } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -80,6 +81,13 @@ export default function Reflections() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["reflections"] });
       setSaved(true);
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Reflection didn't save",
+        description: "That didn't go through — your answers are still here, try again.",
+      });
     },
   });
 

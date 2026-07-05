@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-client-react";
 import { useAlignment, useMissions, useCompleteMission } from "@/hooks/useMissions";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -1985,6 +1986,13 @@ export default function Dashboard() {
   const savePromise = useCallback((promise: string) => {
     updateMe.mutate({ data: { tomorrowPromise: promise } } as any, {
       onSuccess: () => qc.invalidateQueries({ queryKey: getGetMeQueryKey() }),
+      onError: () => {
+        toast({
+          variant: "destructive",
+          title: "Couldn't set tomorrow's promise",
+          description: "That didn't save — you can set it again from the dashboard.",
+        });
+      },
     });
     setShowTomorrowPreview(false);
   }, [updateMe, qc]);
@@ -2016,8 +2024,22 @@ export default function Dashboard() {
               qc.invalidateQueries({ queryKey: getGetUserStatsQueryKey() });
               qc.invalidateQueries({ queryKey: getGetActionsQueryKey() });
             },
+            onError: () => {
+              toast({
+                variant: "destructive",
+                title: "Your promise didn't save",
+                description: "That didn't go through — your streak is safe. Tap Keep My Promise again.",
+              });
+            },
           });
         }
+      },
+      onError: () => {
+        toast({
+          variant: "destructive",
+          title: "Your promise didn't save",
+          description: "That didn't go through — your streak is safe. Tap Keep My Promise again.",
+        });
       },
     });
   }, [completeMission, qc, loggedTypesForPromise, logAction]);
@@ -2072,6 +2094,13 @@ export default function Dashboard() {
       qc.invalidateQueries({ queryKey: getGetUserStatsQueryKey() });
       qc.invalidateQueries({ queryKey: getGetTodayActionsQueryKey() });
       qc.invalidateQueries();
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Couldn't apply streak freeze",
+        description: "That didn't go through — try again in a moment.",
+      });
     },
   });
 
@@ -2150,6 +2179,13 @@ export default function Dashboard() {
         } else {
           setTimeout(() => setJustLogged(null), 3000);
         }
+      },
+      onError: () => {
+        toast({
+          variant: "destructive",
+          title: "Action didn't log",
+          description: "We couldn't save that — check your connection and try again.",
+        });
       },
       onSettled: () => setLoggingType(null),
     });
