@@ -2392,6 +2392,15 @@ export default function Dashboard() {
           <NotificationPermissionBanner streakDays={streakDays} />
         </AnimatePresence>
 
+        {/* Section divider — separates today's ritual (above) from exploration (below) */}
+        <div className="flex items-center gap-3 pt-4">
+          <div className="h-px flex-1 bg-white/8" />
+          <span className="text-[11px] uppercase tracking-[0.25em] font-bold text-muted-foreground/60">
+            Explore Your Journey
+          </span>
+          <div className="h-px flex-1 bg-white/8" />
+        </div>
+
         {/* Quick cards row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
