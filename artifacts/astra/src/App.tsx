@@ -22,7 +22,7 @@ function stripBase(path: string): string {
 if (!clerkPubKey) throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY');
 
 const clerkAppearance = {
-  baseTheme: shadcn,
+  theme: shadcn,
   cssLayerName: "clerk",
   options: {
     logoPlacement: "inside" as const,
