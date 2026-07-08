@@ -879,6 +879,27 @@ function StreakStatusBar({ streakDays, actionsToday, firstName, allActions }: { 
 
   const hasHistory = allActions.length > 0;
 
+  // Once today is already safe (streak protected, non-milestone), the full urgency
+  // card is redundant with the stats bar + promise card above — collapse it to a
+  // slim strip so screen space is reserved for states that actually need attention
+  // (at-risk, zero, or legendary), while still keeping the evidence chain visible.
+  if (state === "safe") {
+    return (
+      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/4 px-5 py-3">
+        <div className="flex items-center gap-3">
+          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+          <p className="text-xs font-semibold text-emerald-400 flex-1 min-w-0 truncate">
+            {config.headline} {streakDays > 0 && `· ${streakDays}-day streak protected`}
+          </p>
+          <Link href={config.cta.href} className="text-xs font-medium text-muted-foreground hover:text-white transition-colors shrink-0 whitespace-nowrap">
+            {config.cta.label}
+          </Link>
+        </div>
+        {hasHistory && <StreakChain allActions={allActions} actionsToday={actionsToday} />}
+      </div>
+    );
+  }
+
   return (
     <AnimatePresence mode="wait">
       <motion.div key={state} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.35 }}
