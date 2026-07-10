@@ -3,6 +3,7 @@
 - [Design subagent backtick bug](backtick-bug.md) — design subagent writes escaped backticks in JSX; use python3 binary replace script to fix
 - [Generated hook naming](orval-hooks.md) — orval generates hooks matching route prefix: admin routes become useAdminGet*, not useGetAdmin*; biography mutation is useGenerateBiographyEntry
 - [Custom hooks pattern](custom-hooks.md) — new API endpoints not in orval spec go in src/hooks/ with credentials:"include" fetch; no Authorization header needed for web (cookie-based Clerk auth)
+- [Clerk Safari OAuth + v6 API](clerk-safari-oauth.md) — iOS Safari blank popup fix: use signIn.sso() without popup arg; v6 replaced authenticateWithRedirect with sso(); @clerk/shared 4.24.0+ needed for /keys subpath
 - [Query invalidation coverage](astra-query-invalidation.md) — invalidate every query key derived from a table on mutation success, not just the one feeding the button you're building; early-return-on-empty components mask this as "not wired up"
 - [Parallel completion paths must reconcile](astra-promise-quicklog-reconciliation.md) — ASTRA's "Today's Promise" and "Quick Log" both represent "did today's thing" but only one updated mission-completed state; audit that all entry points to a shared accomplishment converge on the same source of truth
 - [Silent mutation failures](astra-silent-mutation-failures.md) — ASTRA had a global Toaster mounted but zero onError handlers on core-loop mutations; silent failures on streak/promise actions are a high-risk churn cause worth auditing for in any habit app
