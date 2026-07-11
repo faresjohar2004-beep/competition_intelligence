@@ -1,9 +1,10 @@
 import AppLayout from "@/components/layout/AppLayout";
-import { useGetTodayActions, useLogAction, useGetActionImpact, getGetTodayActionsQueryKey, getGetActionImpactQueryKey, getGetFutureSelfQueryKey } from "@workspace/api-client-react";
+import { useGetTodayActions, useLogAction, useGetActionImpact, getGetTodayActionsQueryKey, getGetActionImpactQueryKey, getGetFutureSelfQueryKey, getGetUserStatsQueryKey, getGetActionsQueryKey } from "@workspace/api-client-react";
+import { useMissions, useCompleteMission } from "@/hooks/useMissions";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-import { Dumbbell, BookOpen, Brain, Video, Leaf, DollarSign, Laptop, Moon, Droplets, CheckCircle2, Zap, Flame } from "lucide-react";
+import { Dumbbell, BookOpen, Brain, Video, Leaf, DollarSign, Laptop, Moon, Droplets, CheckCircle2, Zap, Flame, Sparkles, ArrowRight, CheckCircle } from "lucide-react";
 
 const ACTION_CONFIG = [
   { type: "workout",          label: "Workout",          icon: Dumbbell,   color: "emerald", impact: "+2% Health, +1% Discipline",      identity: "You are someone who refuses to let their body fail them." },
@@ -17,24 +18,25 @@ const ACTION_CONFIG = [
   { type: "water",            label: "Water Intake",     icon: Droplets,   color: "cyan",    impact: "+1% Health",                       identity: "You are someone who takes care of their body." },
 ];
 
-const COLOR_MAP: Record<string, { text: string; bg: string; glow: string; ring: string; hover: string }> = {
-  emerald: { text: "text-emerald-400", bg: "bg-emerald-500/10", glow: "shadow-emerald-500/40", ring: "from-emerald-500 to-teal-400",   hover: "hover:border-emerald-500/40 hover:bg-emerald-500/5" },
-  violet:  { text: "text-violet-400",  bg: "bg-violet-500/10",  glow: "shadow-violet-500/40",  ring: "from-violet-500 to-purple-400",  hover: "hover:border-violet-500/40 hover:bg-violet-500/5" },
-  blue:    { text: "text-blue-400",    bg: "bg-blue-500/10",    glow: "shadow-blue-500/40",    ring: "from-blue-500 to-cyan-400",      hover: "hover:border-blue-500/40 hover:bg-blue-500/5" },
-  orange:  { text: "text-orange-400",  bg: "bg-orange-500/10",  glow: "shadow-orange-500/40",  ring: "from-orange-500 to-amber-400",   hover: "hover:border-orange-500/40 hover:bg-orange-500/5" },
-  teal:    { text: "text-teal-400",    bg: "bg-teal-500/10",    glow: "shadow-teal-500/40",    ring: "from-teal-500 to-emerald-400",   hover: "hover:border-teal-500/40 hover:bg-teal-500/5" },
-  amber:   { text: "text-amber-400",   bg: "bg-amber-500/10",   glow: "shadow-amber-500/40",   ring: "from-amber-500 to-yellow-400",   hover: "hover:border-amber-500/40 hover:bg-amber-500/5" },
-  indigo:  { text: "text-indigo-400",  bg: "bg-indigo-500/10",  glow: "shadow-indigo-500/40",  ring: "from-indigo-500 to-violet-400",  hover: "hover:border-indigo-500/40 hover:bg-indigo-500/5" },
-  sky:     { text: "text-sky-400",     bg: "bg-sky-500/10",     glow: "shadow-sky-500/40",     ring: "from-sky-500 to-blue-400",       hover: "hover:border-sky-500/40 hover:bg-sky-500/5" },
-  cyan:    { text: "text-cyan-400",    bg: "bg-cyan-500/10",    glow: "shadow-cyan-500/40",    ring: "from-cyan-500 to-sky-400",       hover: "hover:border-cyan-500/40 hover:bg-cyan-500/5" },
+const COLOR_MAP: Record<string, { text: string; bg: string; glow: string; ring: string; hover: string; border: string }> = {
+  emerald: { text: "text-emerald-400", bg: "bg-emerald-500/10", glow: "shadow-emerald-500/40", ring: "from-emerald-500 to-teal-400",   hover: "hover:border-emerald-500/40 hover:bg-emerald-500/5", border: "border-emerald-500/30" },
+  violet:  { text: "text-violet-400",  bg: "bg-violet-500/10",  glow: "shadow-violet-500/40",  ring: "from-violet-500 to-purple-400",  hover: "hover:border-violet-500/40 hover:bg-violet-500/5",  border: "border-violet-500/30" },
+  blue:    { text: "text-blue-400",    bg: "bg-blue-500/10",    glow: "shadow-blue-500/40",    ring: "from-blue-500 to-cyan-400",      hover: "hover:border-blue-500/40 hover:bg-blue-500/5",      border: "border-blue-500/30" },
+  orange:  { text: "text-orange-400",  bg: "bg-orange-500/10",  glow: "shadow-orange-500/40",  ring: "from-orange-500 to-amber-400",   hover: "hover:border-orange-500/40 hover:bg-orange-500/5",  border: "border-orange-500/30" },
+  teal:    { text: "text-teal-400",    bg: "bg-teal-500/10",    glow: "shadow-teal-500/40",    ring: "from-teal-500 to-emerald-400",   hover: "hover:border-teal-500/40 hover:bg-teal-500/5",      border: "border-teal-500/30" },
+  amber:   { text: "text-amber-400",   bg: "bg-amber-500/10",   glow: "shadow-amber-500/40",   ring: "from-amber-500 to-yellow-400",   hover: "hover:border-amber-500/40 hover:bg-amber-500/5",    border: "border-amber-500/30" },
+  indigo:  { text: "text-indigo-400",  bg: "bg-indigo-500/10",  glow: "shadow-indigo-500/40",  ring: "from-indigo-500 to-violet-400",  hover: "hover:border-indigo-500/40 hover:bg-indigo-500/5",  border: "border-indigo-500/30" },
+  sky:     { text: "text-sky-400",     bg: "bg-sky-500/10",     glow: "shadow-sky-500/40",     ring: "from-sky-500 to-blue-400",       hover: "hover:border-sky-500/40 hover:bg-sky-500/5",        border: "border-sky-500/30" },
+  cyan:    { text: "text-cyan-400",    bg: "bg-cyan-500/10",    glow: "shadow-cyan-500/40",    ring: "from-cyan-500 to-sky-400",       hover: "hover:border-cyan-500/40 hover:bg-cyan-500/5",      border: "border-cyan-500/30" },
 };
 
 type CompletedAction = { label: string; impact: string; identity: string; color: string; Icon: React.ComponentType<{ className?: string }> };
 
-function CompletionCelebration({ action, streak, completedCount, onDismiss }: {
+function CompletionCelebration({ action, streak, completedCount, promiseJustKept, onDismiss }: {
   action: CompletedAction;
   streak: number;
   completedCount: number;
+  promiseJustKept: boolean;
   onDismiss: () => void;
 }) {
   const c = COLOR_MAP[action.color];
@@ -62,10 +64,8 @@ function CompletionCelebration({ action, streak, completedCount, onDismiss }: {
         className="relative mx-4 w-full max-w-sm rounded-3xl border border-white/10 bg-[#0d1017] p-8 text-center overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Glow behind icon */}
         <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full blur-[80px] opacity-20 bg-gradient-to-br ${c.ring} pointer-events-none`} />
 
-        {/* Particles */}
         {[...Array(6)].map((_, i) => (
           <motion.div
             key={i}
@@ -76,7 +76,6 @@ function CompletionCelebration({ action, streak, completedCount, onDismiss }: {
           />
         ))}
 
-        {/* Icon */}
         <motion.div
           initial={{ scale: 0, rotate: -15 }}
           animate={{ scale: 1, rotate: 0 }}
@@ -86,7 +85,6 @@ function CompletionCelebration({ action, streak, completedCount, onDismiss }: {
           <action.Icon className={`w-9 h-9 ${c.text}`} />
         </motion.div>
 
-        {/* "Action Logged" label */}
         <motion.p
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -96,7 +94,6 @@ function CompletionCelebration({ action, streak, completedCount, onDismiss }: {
           Action Logged
         </motion.p>
 
-        {/* Action name */}
         <motion.h2
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -106,17 +103,28 @@ function CompletionCelebration({ action, streak, completedCount, onDismiss }: {
           {action.label}
         </motion.h2>
 
-        {/* Score impact */}
         <motion.p
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
-          className={`text-sm font-bold mb-6 ${c.text}`}
+          className={`text-sm font-bold mb-4 ${c.text}`}
         >
           {action.impact}
         </motion.p>
 
-        {/* Identity statement — the core of the feature */}
+        {/* Promise-kept callout — shows if this action sealed the day's promise */}
+        {promiseJustKept && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.28, type: "spring" }}
+            className="flex items-center gap-2 justify-center px-3 py-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 mb-4"
+          >
+            <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <p className="text-xs font-bold text-emerald-400">Today's Promise — Kept</p>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -128,7 +136,6 @@ function CompletionCelebration({ action, streak, completedCount, onDismiss }: {
           </p>
         </motion.div>
 
-        {/* Stats row */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -158,7 +165,6 @@ function CompletionCelebration({ action, streak, completedCount, onDismiss }: {
           </div>
         </motion.div>
 
-        {/* Tap to dismiss hint */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.4 }}
@@ -172,25 +178,118 @@ function CompletionCelebration({ action, streak, completedCount, onDismiss }: {
   );
 }
 
+// ─── Today's Promise Banner ───────────────────────────────────────────────────
+function TodaysPromiseBanner({
+  promiseText,
+  isCompleted,
+}: {
+  promiseText: string | null;
+  isCompleted: boolean;
+}) {
+  if (!promiseText) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35 }}
+      className={`rounded-2xl border px-5 py-4 flex items-start gap-4 relative overflow-hidden ${
+        isCompleted
+          ? "border-emerald-500/30 bg-emerald-500/6"
+          : "border-primary/25 bg-primary/5"
+      }`}
+    >
+      <div className={`absolute top-0 right-0 w-36 h-36 rounded-full blur-3xl pointer-events-none ${
+        isCompleted ? "bg-emerald-500/8" : "bg-primary/8"
+      }`} />
+
+      <div className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center border ${
+        isCompleted
+          ? "bg-emerald-500/15 border-emerald-500/30"
+          : "bg-primary/15 border-primary/25"
+      }`}>
+        {isCompleted
+          ? <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          : <Sparkles className="w-4 h-4 text-primary" />}
+      </div>
+
+      <div className="relative z-10 flex-1 min-w-0">
+        <p className={`text-[10px] font-bold uppercase tracking-[0.25em] mb-0.5 ${
+          isCompleted ? "text-emerald-400/70" : "text-primary/70"
+        }`}>
+          Today's Promise
+        </p>
+        <p className={`text-sm font-bold leading-snug ${isCompleted ? "text-emerald-300" : "text-white"}`}>
+          {isCompleted ? `✓ ${promiseText}` : promiseText}
+        </p>
+        {isCompleted && (
+          <p className="text-xs text-emerald-400/60 mt-1 font-medium">
+            Promise kept. Identity strengthened.
+          </p>
+        )}
+        {!isCompleted && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Log any action below — every action counts toward keeping this promise.
+          </p>
+        )}
+      </div>
+
+      {!isCompleted && (
+        <div className="shrink-0 flex items-center gap-1 text-primary/50 self-center">
+          <ArrowRight className="w-3.5 h-3.5" />
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 export default function Actions() {
   const qc = useQueryClient();
   const { data: todaySummary } = useGetTodayActions();
   const { data: impacts } = useGetActionImpact();
+  const { data: missions } = useMissions();
   const logAction = useLogAction();
-  const [celebration, setCelebration] = useState<CompletedAction | null>(null);
+  const completeMission = useCompleteMission();
+  const [celebration, setCelebration] = useState<(CompletedAction & { promiseJustKept: boolean }) | null>(null);
 
   const completedTypes = new Set((todaySummary?.actions ?? []).map((a: any) => a.type));
   const completedCount = completedTypes.size;
   const completion = todaySummary?.completionPercentage ?? 0;
   const streakDays = (todaySummary as any)?.streakDays ?? 0;
 
+  const promiseText: string | null = missions?.criticalMission ?? null;
+  const promiseCompleted: boolean = missions?.criticalCompleted ?? false;
+
   const handleLog = (action: typeof ACTION_CONFIG[0]) => {
+    const wasPromiseCompleted = missions?.criticalCompleted ?? false;
+
     logAction.mutate({ data: { type: action.type as any } }, {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetTodayActionsQueryKey() });
         qc.invalidateQueries({ queryKey: getGetActionImpactQueryKey() });
         qc.invalidateQueries({ queryKey: getGetFutureSelfQueryKey() });
-        setCelebration({ label: action.label, impact: action.impact, identity: action.identity, color: action.color, Icon: action.icon });
+        qc.invalidateQueries({ queryKey: getGetUserStatsQueryKey() });
+        qc.invalidateQueries({ queryKey: getGetActionsQueryKey() });
+
+        // ── Reconcile with daily promise ──────────────────────────────────
+        // Mirror the Dashboard QuickLog behavior: logging any action on this
+        // page also seals the critical mission so "Today's Promise" is never
+        // left on "Pending" after the user clearly showed up and did the work.
+        if (!wasPromiseCompleted && missions?.criticalMission) {
+          completeMission.mutate("critical", {
+            onSuccess: () => qc.invalidateQueries({ queryKey: ["missions"] }),
+          });
+        }
+
+        const promiseJustKept = !wasPromiseCompleted && !!missions?.criticalMission;
+        setCelebration({
+          label: action.label,
+          impact: action.impact,
+          identity: action.identity,
+          color: action.color,
+          Icon: action.icon,
+          promiseJustKept,
+        });
       },
     });
   };
@@ -203,15 +302,21 @@ export default function Actions() {
             action={celebration}
             streak={streakDays}
             completedCount={completedCount + 1}
+            promiseJustKept={celebration.promiseJustKept}
             onDismiss={() => setCelebration(null)}
           />
         )}
       </AnimatePresence>
 
       <div className="p-6 md:p-8 max-w-6xl mx-auto">
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">Daily Actions</h1>
           <p className="text-muted-foreground mt-1">Every action is a vote for who you're becoming. What did you do today?</p>
+        </div>
+
+        {/* Today's Promise — context for why they're here */}
+        <div className="mb-5">
+          <TodaysPromiseBanner promiseText={promiseText} isCompleted={promiseCompleted} />
         </div>
 
         {/* Progress bar */}
