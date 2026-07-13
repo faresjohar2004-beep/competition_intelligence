@@ -32,7 +32,7 @@ const NAV_ITEMS = [
 const MOBILE_NAV = [
   { href: "/dashboard",  label: "Home",     icon: LayoutDashboard },
   { href: "/actions",    label: "Actions",  icon: Zap },
-  { href: "/evidence",   label: "Evidence", icon: Shield },
+  { href: "/missions",   label: "Missions", icon: Target },
   { href: "/coach",      label: "Coach",    icon: MessageSquare },
   { href: "/future-self",label: "Future",   icon: User },
 ];

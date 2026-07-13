@@ -6,5 +6,6 @@
 - [Clerk Safari OAuth + v6 API](clerk-safari-oauth.md) — iOS Safari blank popup fix: use signIn.sso() without popup arg; v6 replaced authenticateWithRedirect with sso(); @clerk/shared 4.24.0+ needed for /keys subpath
 - [Query invalidation coverage](astra-query-invalidation.md) — invalidate every query key derived from a table on mutation success, not just the one feeding the button you're building; early-return-on-empty components mask this as "not wired up"
 - [Promise reconciliation — all log surfaces](astra-promise-reconciliation.md) — /actions page must call completeMission("critical") after any log; without it promise stays "Pending" despite user doing the work; fixed in Actions.tsx
+- [FutureSelf score history](astra-futureself-scores.md) — /scores used Math.random() scrambling chart every load; fixed to reconstruct real history: score_on_D = current − sum(impacts after day D)
 - [Silent mutation failures](astra-silent-mutation-failures.md) — ASTRA had a global Toaster mounted but zero onError handlers on core-loop mutations; silent failures on streak/promise actions are a high-risk churn cause worth auditing for in any habit app
 - [Dashboard information hierarchy](astra-dashboard-hierarchy.md) — flat stacking of 15+ equal-weight sections blurs daily-ritual vs optional-exploration content; a labeled divider between them is a cheap declutter fix
