@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { db, usersTable, actionsTable, missionsTable, milestonesTable } from "@workspace/db";
+import { db, usersTable, actionsTable, missionsTable, milestonesTable, futureSelfTable, lifeMapTable, userChaptersTable, chaptersTable } from "@workspace/db";
 import { eq, sql, count } from "drizzle-orm";
 import { requireAuthWithUser } from "../lib/auth";
 import { generateDailyMissions } from "../lib/ai";
+import { getActionImpact, clampScore, calcOverallScore } from "../lib/scores";
 
 const router = Router();
 
@@ -48,6 +49,7 @@ router.get("/", requireAuthWithUser, async (req, res) => {
 });
 
 // POST /api/missions/complete — mark a mission slot as completed
+// Also logs an action to actionsTable so the streak is protected and evidence is built.
 router.post("/complete", requireAuthWithUser, async (req, res) => {
   const user = (req as any).user;
   const { slot } = req.body as { slot: "critical" | "secondary1" | "secondary2" | "secondary3" | "courage" };
@@ -66,11 +68,110 @@ router.post("/complete", requireAuthWithUser, async (req, res) => {
     return;
   }
 
+  // 1. Mark the mission slot complete
   const [updated] = await db
     .update(missionsTable)
     .set(fieldMap[slot])
     .where(sql`${missionsTable.userId} = ${user.id} AND ${missionsTable.date} = ${todayStr}`)
     .returning();
+
+  // 2. Log a "promise" action — completing a mission = keeping a promise.
+  //    This protects the streak, adds to the Evidence Vault, and updates life scores.
+  const impact = getActionImpact("promise");
+
+  await db.insert(actionsTable).values({
+    userId: user.id,
+    type: "promise",
+    notes: `Mission complete: ${slot}`,
+    healthImpact: impact.healthDelta,
+    wealthImpact: impact.wealthDelta,
+    disciplineImpact: impact.disciplineDelta,
+    confidenceImpact: impact.confidenceDelta,
+    knowledgeImpact: impact.knowledgeDelta,
+  });
+
+  // 3. Update future self scores
+  const [current] = await db
+    .select()
+    .from(futureSelfTable)
+    .where(sql`${futureSelfTable.userId} = ${user.id} AND ${futureSelfTable.timeframe} = 'current'`);
+
+  if (current) {
+    const h = clampScore(current.healthScore + impact.healthDelta);
+    const w = clampScore(current.wealthScore + impact.wealthDelta);
+    const d = clampScore(current.disciplineScore + impact.disciplineDelta);
+    const c = clampScore(current.confidenceScore + impact.confidenceDelta);
+    const k = clampScore(current.knowledgeScore + impact.knowledgeDelta);
+    const overall = calcOverallScore({ healthScore: h, wealthScore: w, disciplineScore: d, confidenceScore: c, knowledgeScore: k });
+
+    await db.update(futureSelfTable).set({
+      healthScore: h, wealthScore: w, disciplineScore: d,
+      confidenceScore: c, knowledgeScore: k, overallScore: overall,
+      updatedAt: new Date(),
+    }).where(eq(futureSelfTable.id, current.id));
+
+    // Also update 1yr projection proportionally
+    const [oneYear] = await db
+      .select()
+      .from(futureSelfTable)
+      .where(sql`${futureSelfTable.userId} = ${user.id} AND ${futureSelfTable.timeframe} = 'one_year'`);
+
+    if (oneYear) {
+      await db.update(futureSelfTable).set({
+        healthScore: clampScore(oneYear.healthScore + impact.healthDelta * 1.2),
+        wealthScore: clampScore(oneYear.wealthScore + impact.wealthDelta * 1.2),
+        disciplineScore: clampScore(oneYear.disciplineScore + impact.disciplineDelta * 1.2),
+        confidenceScore: clampScore(oneYear.confidenceScore + impact.confidenceDelta * 1.2),
+        knowledgeScore: clampScore(oneYear.knowledgeScore + impact.knowledgeDelta * 1.2),
+        updatedAt: new Date(),
+      }).where(eq(futureSelfTable.id, oneYear.id));
+    }
+  }
+
+  // 4. Update life map areas
+  const areaMap: Record<string, keyof typeof impact> = {
+    discipline: "disciplineDelta",
+    career: "wealthDelta",
+  };
+  for (const [area, impactKey] of Object.entries(areaMap)) {
+    const delta = impact[impactKey] as number;
+    if (delta > 0) {
+      await db.update(lifeMapTable).set({
+        score: sql`LEAST(100, ${lifeMapTable.score} + ${delta})`,
+        trend: delta,
+        updatedAt: new Date(),
+      }).where(sql`${lifeMapTable.userId} = ${user.id} AND ${lifeMapTable.area} = ${area}`);
+    }
+  }
+
+  // 5. Protect the streak — update lastActiveDate and streakDays if needed
+  if (user.lastActiveDate !== todayStr) {
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+    const newStreak = user.lastActiveDate === yesterday ? user.streakDays + 1 : 1;
+    await db.update(usersTable).set({
+      streakDays: newStreak,
+      lastActiveDate: todayStr,
+      updatedAt: new Date(),
+    }).where(eq(usersTable.id, user.id));
+  }
+
+  // 6. Check chapter unlocks
+  const [totalActions] = await db
+    .select({ count: count() })
+    .from(actionsTable)
+    .where(eq(actionsTable.userId, user.id));
+
+  const chapters = await db.select().from(chaptersTable).orderBy(chaptersTable.number);
+  for (const chapter of chapters) {
+    const [uc] = await db.select().from(userChaptersTable).where(
+      sql`${userChaptersTable.userId} = ${user.id} AND ${userChaptersTable.chapterNumber} = ${chapter.number}`
+    );
+    if (!uc && totalActions.count >= chapter.requiredActions) {
+      await db.insert(userChaptersTable).values({ userId: user.id, chapterNumber: chapter.number, unlocked: true });
+      await db.update(usersTable).set({ currentChapter: chapter.number, updatedAt: new Date() })
+        .where(eq(usersTable.id, user.id));
+    }
+  }
 
   res.json(updated);
 });
