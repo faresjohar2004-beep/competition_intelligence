@@ -2001,10 +2001,13 @@ export default function Dashboard() {
   const [showMilestoneCard, setShowMilestoneCard] = useState(false);
   const [milestoneStreak, setMilestoneStreak] = useState(0);
   const [freezeDismissed, setFreezeDismissed] = useState(false);
+  // Ensures the auto-trigger only fires once per Dashboard session
+  const tomorrowAutoShownRef = useRef(false);
 
   const tomorrowPromise = (user as any)?.tomorrowPromise as string | null | undefined;
 
   const savePromise = useCallback((promise: string) => {
+    tomorrowAutoShownRef.current = true;
     updateMe.mutate({ data: { tomorrowPromise: promise } } as any, {
       onSuccess: () => qc.invalidateQueries({ queryKey: getGetMeQueryKey() }),
       onError: () => {
@@ -2032,6 +2035,24 @@ export default function Dashboard() {
   );
   const promiseText: string | null = missions?.criticalMission ?? tomorrowPromise ?? null;
   const promiseCompleted: boolean = missions?.criticalCompleted ?? false;
+
+  // Auto-show TomorrowPreview for users who logged their first action outside the Dashboard
+  // (e.g. from the Actions page or Missions page) and haven't committed to tomorrow yet.
+  // Guards: only fires once per session, not during an in-progress QuickLog animation,
+  // not while a milestone card is showing, not once a promise is already saved.
+  useEffect(() => {
+    if (
+      actionsToday >= 1 &&
+      !tomorrowPromise &&
+      !tomorrowAutoShownRef.current &&
+      !showMilestoneCard &&
+      !justLogged
+    ) {
+      tomorrowAutoShownRef.current = true;
+      const t = setTimeout(() => setShowTomorrowPreview(true), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [actionsToday, tomorrowPromise, showMilestoneCard, justLogged]);
 
   const handleKeepPromise = useCallback(() => {
     completeMission.mutate("critical", {
@@ -2194,6 +2215,7 @@ export default function Dashboard() {
               setMilestoneStreak(potentialStreak);
               setShowMilestoneCard(true);
             } else {
+              tomorrowAutoShownRef.current = true;
               setShowTomorrowPreview(true);
             }
           }, 3200);
