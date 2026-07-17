@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/components/layout/AppLayout";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, CheckCircle2, Sparkles, ChevronDown } from "lucide-react";
+import { BookOpen, CheckCircle2, Sparkles, ChevronDown, Flame, Zap } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useGetTodayActions, useGetUserStats } from "@workspace/api-client-react";
+import { useMissions } from "@/hooks/useMissions";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -17,26 +19,41 @@ async function apiFetch(path: string, options?: RequestInit) {
   return res.json();
 }
 
-const PROMPTS = [
-  {
-    key: "q1",
-    label: "Today's action",
-    question: "What did you do today that your future self would be proud of?",
-    placeholder: "I chose to…",
-  },
-  {
-    key: "q2",
-    label: "Who you proved you are",
-    question: "What kind of person did your actions prove you are today?",
-    placeholder: "Through my actions, I proved I am someone who…",
-  },
-  {
-    key: "q3",
-    label: "From your future self",
-    question: "What would your future self say about how you showed up today?",
-    placeholder: "My future self would say…",
-  },
-];
+// ─── Context-aware prompt builder ────────────────────────────────────────────
+// Questions are generated from the user's actual today data so each reflection
+// is anchored to real evidence, not generic self-improvement copy.
+function buildContextPrompts(
+  actionCount: number,
+  actionNames: string,
+  streakDays: number,
+  criticalMission: string | null,
+  criticalCompleted: boolean,
+) {
+  const q1 =
+    actionCount >= 2
+      ? `You logged ${actionCount} actions today — ${actionNames}. What was the moment you felt most like the person you're becoming?`
+      : actionCount === 1
+      ? `You logged ${actionNames} today. What did that choice prove about who you are?`
+      : "What did you do today — however small — that your future self would recognise as a turning point?";
+
+  const q2 =
+    streakDays >= 7
+      ? `You've shown up ${streakDays} days straight. What does that consistency reveal about the person you're becoming?`
+      : streakDays >= 2
+      ? `You're on a ${streakDays}-day streak. What's different about you now compared to when you started?`
+      : "What did today's actions prove about the kind of person you already are?";
+
+  const q3 =
+    criticalCompleted && criticalMission
+      ? `You completed your critical mission: "${criticalMission.length > 80 ? criticalMission.slice(0, 80) + "…" : criticalMission}". Looking back from one year from now, what does your future self say about how you showed up today?`
+      : "What would your future self say about how you showed up today?";
+
+  return [
+    { key: "q1", label: "Today's actions",       question: q1, placeholder: "I chose to…" },
+    { key: "q2", label: "Who you proved you are", question: q2, placeholder: "Through my actions, I proved I am someone who…" },
+    { key: "q3", label: "From your future self",  question: q3, placeholder: "My future self would say…" },
+  ];
+}
 
 const MOODS = [
   { score: 1, emoji: "😔", label: "Struggling" },
@@ -62,6 +79,11 @@ function MoodEmoji({ score }: { score?: number | null }) {
 
 export default function Reflections() {
   const qc = useQueryClient();
+
+  // Live context for personalised prompts
+  const { data: todayActions } = useGetTodayActions();
+  const { data: stats } = useGetUserStats();
+  const { data: missions } = useMissions();
 
   const { data: todayData, isLoading: checkingToday } = useQuery({
     queryKey: ["reflections", "today"],
@@ -95,6 +117,26 @@ export default function Reflections() {
   const [mood, setMood] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
+
+  // Build context-aware prompts from today's live data
+  const actionCount = (todayActions?.actions ?? []).length;
+  const actionNames = (todayActions?.actions ?? [])
+    .map((a: any) => a.type.replace(/_/g, " "))
+    .slice(0, 3)
+    .join(", ");
+  const streakDays = stats?.streakDays ?? 0;
+
+  const dynamicPrompts = useMemo(
+    () =>
+      buildContextPrompts(
+        actionCount,
+        actionNames,
+        streakDays,
+        missions?.criticalMission ?? null,
+        missions?.criticalCompleted ?? false,
+      ),
+    [actionCount, actionNames, streakDays, missions],
+  );
 
   const hasReflectedToday = todayData?.reflected === true;
   const todayReflection = todayData?.reflection;
@@ -172,6 +214,26 @@ export default function Reflections() {
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.25em] text-primary/70 mb-1">Daily Identity Reflection</p>
               <h2 className="text-xl font-black text-white">How did you show up today?</h2>
+              {/* Context ribbon — shows ASTRA knows exactly what happened today */}
+              {(actionCount > 0 || streakDays > 0) && (
+                <div className="flex items-center gap-2 flex-wrap mt-3">
+                  {streakDays > 0 && (
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-full px-2.5 py-1">
+                      <Flame className="w-2.5 h-2.5" />Day {streakDays}
+                    </span>
+                  )}
+                  {actionCount > 0 && (
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-1">
+                      <Zap className="w-2.5 h-2.5" />{actionCount} action{actionCount !== 1 ? "s" : ""} logged
+                    </span>
+                  )}
+                  {missions?.criticalCompleted && (
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 border border-primary/20 rounded-full px-2.5 py-1">
+                      ✓ Critical mission done
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Mood */}
@@ -195,8 +257,8 @@ export default function Reflections() {
               </div>
             </div>
 
-            {/* Prompts */}
-            {PROMPTS.map(({ key, label, question, placeholder }) => (
+            {/* Prompts — personalised from today's live data */}
+            {dynamicPrompts.map(({ key, label, question, placeholder }) => (
               <div key={key}>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/60 mb-1">{label}</p>
                 <p className="text-sm font-medium text-white mb-2">{question}</p>
