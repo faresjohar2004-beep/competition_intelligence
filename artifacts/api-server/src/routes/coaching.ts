@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { db, coachingMessagesTable, coachingInsightsTable, missionsTable, actionsTable, futureSelfTable } from "@workspace/db";
-import { eq, desc, sql } from "drizzle-orm";
+import { db, coachingMessagesTable, coachingInsightsTable, coachMemoryTable, missionsTable, actionsTable, futureSelfTable } from "@workspace/db";
+import { eq, desc, sql, count } from "drizzle-orm";
 import { requireAuthWithUser } from "../lib/auth";
-import { generateCoachResponse } from "../lib/ai";
+import { generateCoachResponse, generateCoachMemorySummary } from "../lib/ai";
 
 const router = Router();
 
@@ -13,7 +13,7 @@ const router = Router();
 async function buildUserContext(userId: number, user: any): Promise<string> {
   const todayStr = new Date().toISOString().split("T")[0];
 
-  const [todaysMissions, todaysActions, currentScores] = await Promise.all([
+  const [todaysMissions, todaysActions, currentScores, coachMemory] = await Promise.all([
     db
       .select()
       .from(missionsTable)
@@ -29,6 +29,13 @@ async function buildUserContext(userId: number, user: any): Promise<string> {
       .select()
       .from(futureSelfTable)
       .where(sql`${futureSelfTable.userId} = ${userId} AND ${futureSelfTable.timeframe} = 'current'`)
+      .then((rows) => rows[0] ?? null),
+
+    // Fetch the pre-computed memory digest of older sessions (if any)
+    db
+      .select()
+      .from(coachMemoryTable)
+      .where(eq(coachMemoryTable.userId, userId))
       .then((rows) => rows[0] ?? null),
   ]);
 
@@ -64,7 +71,38 @@ async function buildUserContext(userId: number, user: any): Promise<string> {
     missionLines = "\nNo missions generated yet today.";
   }
 
-  return [base, actionLine, scoreLine, missionLines].filter(Boolean).join(". ");
+  const ctx = [base, actionLine, scoreLine].filter(Boolean).join(". ");
+  // Append previous-session memory so the coach never forgets older context
+  const memorySection = coachMemory?.summary
+    ? `\n\nPREVIOUS SESSION MEMORY: ${coachMemory.summary}`
+    : "";
+  return ctx + missionLines + memorySection;
+}
+
+// ─── Background memory refresh ────────────────────────────────────────────────
+// Summarises all messages outside the live 10-message window and upserts the
+// digest. Called fire-and-forget — never blocks a chat response.
+async function refreshCoachMemory(userId: number): Promise<void> {
+  const allMessages = await db
+    .select({ role: coachingMessagesTable.role, content: coachingMessagesTable.content })
+    .from(coachingMessagesTable)
+    .where(eq(coachingMessagesTable.userId, userId))
+    .orderBy(coachingMessagesTable.createdAt);
+
+  // Only summarise the portion outside the live 10-message window
+  const toSummarise = allMessages.slice(0, -10);
+  if (toSummarise.length < 5) return;
+
+  const summary = await generateCoachMemorySummary(toSummarise);
+  if (!summary) return;
+
+  await db
+    .insert(coachMemoryTable)
+    .values({ userId, summary, messageCount: toSummarise.length, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: coachMemoryTable.userId,
+      set: { summary, messageCount: toSummarise.length, updatedAt: new Date() },
+    });
 }
 
 // GET /api/coaching/messages
@@ -102,6 +140,22 @@ router.post("/messages", requireAuthWithUser, async (req, res) => {
   }).returning();
 
   res.status(201).json({ ...assistantMsg, createdAt: assistantMsg.createdAt.toISOString() });
+
+  // Fire-and-forget memory refresh — never blocks the response.
+  // Trigger at 15, 25, 35 … messages (i.e. every 10 after the first 15)
+  // so the coach always has a fresh digest of older context.
+  try {
+    const [{ value: totalCount }] = await db
+      .select({ value: count() })
+      .from(coachingMessagesTable)
+      .where(eq(coachingMessagesTable.userId, user.id));
+    const n = Number(totalCount);
+    if (n >= 15 && (n - 15) % 10 === 0) {
+      refreshCoachMemory(user.id).catch(() => { /* silent — non-critical */ });
+    }
+  } catch {
+    // non-critical — don't let this break anything
+  }
 });
 
 // GET /api/coaching/insights

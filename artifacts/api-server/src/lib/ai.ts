@@ -92,6 +92,35 @@ function pickCoachFallback(userMessage: string): string {
   return COACH_RESPONSES[Math.floor(Math.random() * COACH_RESPONSES.length)];
 }
 
+// ─── Coach memory digest ──────────────────────────────────────────────────────
+// Summarises older coaching messages so the coach retains context even after
+// the live message window rolls past them. Called in the background — never
+// blocks the chat response.
+export async function generateCoachMemorySummary(
+  messages: { role: string; content: string }[],
+): Promise<string | null> {
+  if (messages.length < 5) return null;
+
+  const transcript = messages
+    .map((m) => `${m.role === "user" ? "User" : "ASTRA"}: ${m.content}`)
+    .join("\n");
+
+  return callOpenAI(
+    [
+      {
+        role: "system",
+        content:
+          "You are a coaching memory assistant. Read this coaching transcript and extract the essential context into exactly 3 concise sentences. Focus on: (1) the user's stated goals and core struggles, (2) specific wins, breakthroughs or commitments mentioned, (3) recurring patterns, habits, or behaviors. Be specific and personal — avoid generic statements.",
+      },
+      {
+        role: "user",
+        content: `Coaching transcript:\n\n${transcript}\n\nWrite a 3-sentence coaching memory digest.`,
+      },
+    ],
+    { max_tokens: 200 },
+  );
+}
+
 export async function generateCoachResponse(
   userMessage: string,
   history: { role: "user" | "assistant"; content: string }[],

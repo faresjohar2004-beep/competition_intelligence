@@ -415,7 +415,7 @@ export default function Coach() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground/40 mt-2 text-center">
-              ASTRA knows your streak, today's actions, and your full coaching history
+              ASTRA knows your streak, today's actions, missions, and coaching history
             </p>
           </div>
         </div>

@@ -20,6 +20,17 @@ export const coachingInsightsTable = pgTable("coaching_insights", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Stores a rolling AI-generated memory digest of a user's coaching history.
+// Regenerated every N messages so the coach can reference older sessions even
+// after the raw message window is truncated.
+export const coachMemoryTable = pgTable("coach_memory", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique().references(() => usersTable.id, { onDelete: "cascade" }),
+  summary: text("summary").notNull(),
+  messageCount: integer("message_count").notNull().default(0),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const insertCoachingMessageSchema = createInsertSchema(coachingMessagesTable).omit({ id: true, createdAt: true });
 export type InsertCoachingMessage = z.infer<typeof insertCoachingMessageSchema>;
 export type CoachingMessage = typeof coachingMessagesTable.$inferSelect;
