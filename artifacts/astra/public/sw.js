@@ -10,8 +10,8 @@ self.addEventListener("push", function (event) {
   const title = data.title || "Astra OS";
   const options = {
     body: data.body || "Your streak is at risk — log one action to keep it alive.",
-    icon: "/favicon.ico",
-    badge: "/favicon.ico",
+    icon: "/favicon.svg",
+    badge: "/favicon.svg",
     tag: "astra-daily-reminder",
     renotify: true,
     requireInteraction: false,
