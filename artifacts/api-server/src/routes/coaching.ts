@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, coachingMessagesTable, coachingInsightsTable, coachMemoryTable, missionsTable, actionsTable, futureSelfTable } from "@workspace/db";
 import { eq, desc, sql, count } from "drizzle-orm";
 import { requireAuthWithUser } from "../lib/auth";
-import { generateCoachResponse, generateCoachMemorySummary } from "../lib/ai";
+import { generateCoachResponse, generateCoachMemorySummary, generateCoachInsights } from "../lib/ai";
 
 const router = Router();
 
@@ -79,6 +79,60 @@ async function buildUserContext(userId: number, user: any): Promise<string> {
   return ctx + missionLines + memorySection;
 }
 
+// ─── Background insights refresh ─────────────────────────────────────────────
+// Regenerates the 3 insight cards from real user data (scores, actions, memory).
+// Called fire-and-forget — never blocks a response.
+async function refreshCoachInsights(userId: number, user: any): Promise<void> {
+  try {
+    const [currentScores, recentActions, coachMemory] = await Promise.all([
+      db
+        .select()
+        .from(futureSelfTable)
+        .where(sql`${futureSelfTable.userId} = ${userId} AND ${futureSelfTable.timeframe} = 'current'`)
+        .then((rows) => rows[0] ?? null),
+      db
+        .select({ type: actionsTable.type })
+        .from(actionsTable)
+        .where(sql`${actionsTable.userId} = ${userId} AND ${actionsTable.completedAt} >= NOW() - INTERVAL '14 days'`)
+        .then((rows) => rows.map((r) => r.type)),
+      db
+        .select()
+        .from(coachMemoryTable)
+        .where(eq(coachMemoryTable.userId, userId))
+        .then((rows) => rows[0] ?? null),
+    ]);
+
+    const lifeScores = currentScores
+      ? {
+          health: currentScores.healthScore,
+          discipline: currentScores.disciplineScore,
+          wealth: currentScores.wealthScore,
+          knowledge: currentScores.knowledgeScore,
+          confidence: currentScores.confidenceScore,
+        }
+      : null;
+
+    const newInsights = await generateCoachInsights(
+      user.name,
+      lifeScores,
+      recentActions,
+      user.streakDays ?? 0,
+      user.mainGoals ?? null,
+      user.biggestStruggles ?? null,
+      coachMemory?.summary ?? null,
+    );
+
+    if (!newInsights || newInsights.length < 3) return;
+
+    await db.delete(coachingInsightsTable).where(eq(coachingInsightsTable.userId, userId));
+    await db
+      .insert(coachingInsightsTable)
+      .values(newInsights.map((ins) => ({ userId, type: ins.type, content: ins.content, priority: ins.priority })));
+  } catch {
+    // non-critical — never surfaces to user
+  }
+}
+
 // ─── Background memory refresh ────────────────────────────────────────────────
 // Summarises all messages outside the live 10-message window and upserts the
 // digest. Called fire-and-forget — never blocks a chat response.
@@ -141,9 +195,9 @@ router.post("/messages", requireAuthWithUser, async (req, res) => {
 
   res.status(201).json({ ...assistantMsg, createdAt: assistantMsg.createdAt.toISOString() });
 
-  // Fire-and-forget memory refresh — never blocks the response.
-  // Trigger at 15, 25, 35 … messages (i.e. every 10 after the first 15)
-  // so the coach always has a fresh digest of older context.
+  // Fire-and-forget background refreshes — never blocks the response.
+  // Memory: at 15, 25, 35 … (every 10 after first 15) — summarise older turns.
+  // Insights: at 10, 20, 30 … (every 10 from first 10) — regenerate AI insight cards.
   try {
     const [{ value: totalCount }] = await db
       .select({ value: count() })
@@ -152,6 +206,9 @@ router.post("/messages", requireAuthWithUser, async (req, res) => {
     const n = Number(totalCount);
     if (n >= 15 && (n - 15) % 10 === 0) {
       refreshCoachMemory(user.id).catch(() => { /* silent — non-critical */ });
+    }
+    if (n >= 10 && n % 10 === 0) {
+      refreshCoachInsights(user.id, user).catch(() => { /* silent — non-critical */ });
     }
   } catch {
     // non-critical — don't let this break anything
@@ -163,7 +220,7 @@ router.get("/insights", requireAuthWithUser, async (req, res) => {
   const user = (req as any).user;
   let insights = await db.select().from(coachingInsightsTable).where(eq(coachingInsightsTable.userId, user.id)).orderBy(coachingInsightsTable.priority);
 
-  // Seed default insights if none exist
+  // Seed default insights if none exist yet
   if (insights.length === 0) {
     const defaults = [
       { type: "strength", content: `Your commitment to showing up is your greatest asset, ${user.name}. Consistency compounds.`, priority: 1 },
@@ -175,6 +232,25 @@ router.get("/insights", requireAuthWithUser, async (req, res) => {
   }
 
   res.json(insights.map(i => ({ ...i, createdAt: i.createdAt.toISOString() })));
+
+  // Lazy staleness refresh — if insights are older than 7 days and the user has
+  // enough coaching history, regenerate them in the background so returning
+  // users always see fresh, data-driven cards without waiting.
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const oldest = insights[0];
+    if (oldest && oldest.createdAt < sevenDaysAgo) {
+      const [{ value: msgCount }] = await db
+        .select({ value: count() })
+        .from(coachingMessagesTable)
+        .where(eq(coachingMessagesTable.userId, user.id));
+      if (Number(msgCount) >= 10) {
+        refreshCoachInsights(user.id, user).catch(() => { /* silent */ });
+      }
+    }
+  } catch {
+    // non-critical
+  }
 });
 
 export default router;

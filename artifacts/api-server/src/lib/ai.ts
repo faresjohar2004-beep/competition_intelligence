@@ -121,6 +121,73 @@ export async function generateCoachMemorySummary(
   );
 }
 
+// ─── AI-generated coach insights ─────────────────────────────────────────────
+// Produces 3 personalised insight cards (strength / recommendation / warning)
+// grounded in the user's real scores, actions, and coach memory digest.
+// Called fire-and-forget — never blocks a response.
+export async function generateCoachInsights(
+  userName: string,
+  lifeScores: { health: number; discipline: number; wealth: number; knowledge: number; confidence: number } | null,
+  recentActionTypes: string[],
+  streakDays: number,
+  goals: string | null,
+  struggles: string | null,
+  coachMemory: string | null,
+): Promise<Array<{ type: string; content: string; priority: number }> | null> {
+  const scoreStr = lifeScores
+    ? `Health: ${Math.round(lifeScores.health)}, Discipline: ${Math.round(lifeScores.discipline)}, Wealth: ${Math.round(lifeScores.wealth)}, Knowledge: ${Math.round(lifeScores.knowledge)}, Confidence: ${Math.round(lifeScores.confidence)}`
+    : "Scores not yet available";
+
+  const actionStr = recentActionTypes.length
+    ? [...new Set(recentActionTypes)].slice(0, 8).join(", ")
+    : "none logged yet";
+
+  const prompt = `Generate 3 highly specific coaching insights for ${userName}.
+
+DATA:
+- Streak: ${streakDays} days
+- Goals: ${goals || "not specified"}
+- Struggles: ${struggles || "not specified"}
+- Life scores: ${scoreStr}
+- Recent actions (14 days): ${actionStr}
+- Coach conversation memory: ${coachMemory || "No prior sessions yet"}
+
+Output ONLY this exact JSON object (no markdown):
+{"insights":[
+  {"type":"strength","content":"<1-2 sentences — reference their ACTUAL streak number, a specific score, or a real pattern from their data — not generic praise>","priority":1},
+  {"type":"recommendation","content":"<1-2 sentences — a concrete next action tied to their LOWEST score or stated goals — name the specific score and gap>","priority":2},
+  {"type":"warning","content":"<1-2 sentences — a specific risk grounded in their stated struggles and data — be direct and precise, not vague>","priority":3}
+]}`;
+
+  const result = await callOpenAI(
+    [
+      {
+        role: "system",
+        content:
+          "You are ASTRA — an elite life strategist. Generate deeply personalised coaching insights anchored to real user data. Output ONLY the requested JSON object.",
+      },
+      { role: "user", content: prompt },
+    ],
+    { max_tokens: 400, response_format: { type: "json_object" } },
+  );
+
+  if (!result) return null;
+  try {
+    const parsed = JSON.parse(result);
+    const arr: any[] = Array.isArray(parsed) ? parsed : (parsed.insights ?? parsed.data ?? Object.values(parsed)[0]);
+    if (Array.isArray(arr) && arr.length >= 3) {
+      return arr.slice(0, 3).map((item: any, i: number) => ({
+        type: item.type ?? ["strength", "recommendation", "warning"][i],
+        content: String(item.content ?? ""),
+        priority: typeof item.priority === "number" ? item.priority : i + 1,
+      }));
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export async function generateCoachResponse(
   userMessage: string,
   history: { role: "user" | "assistant"; content: string }[],
