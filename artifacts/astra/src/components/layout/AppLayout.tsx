@@ -1,12 +1,13 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk } from "@clerk/react";
-import { useGetMe } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
+import { useGetMe, useGetTodayActions } from "@workspace/api-client-react";
 import {
   LayoutDashboard, User, Map, Activity,
   BookOpen, Mail, FileText, MessageSquare,
   GitCommit, Share2, Settings, ShieldAlert,
-  Target, LogOut, Shield, Zap,
+  Target, LogOut, Shield, Zap, PenLine,
 } from "lucide-react";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -34,7 +35,7 @@ const MOBILE_NAV = [
   { href: "/actions",    label: "Actions",  icon: Zap },
   { href: "/missions",   label: "Missions", icon: Target },
   { href: "/coach",      label: "Coach",    icon: MessageSquare },
-  { href: "/future-self",label: "Future",   icon: User },
+  { href: "/reflections",label: "Reflect",  icon: PenLine },
 ];
 
 // Map from path → page title for the mobile header
@@ -61,6 +62,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { signOut } = useClerk();
 
   const pageTitle = PAGE_TITLES[location] ?? "ASTRA";
+
+  // ── Reflect tab pending-badge logic ─────────────────────────────────────────
+  // Show an amber dot on the Reflect tab when the user has logged at least one
+  // action today but hasn't reflected yet. Fires only for authenticated users.
+  const { data: todayActions } = useGetTodayActions({ query: { enabled: !!user, staleTime: 60_000 } });
+  const { data: reflectionToday } = useQuery({
+    queryKey: ["reflections", "today"],
+    queryFn: async () => {
+      const res = await fetch(`${basePath}/api/reflections/today`, { credentials: "include" });
+      if (!res.ok) return { reflected: false };
+      return res.json() as Promise<{ reflected: boolean }>;
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
+  const actionsToday = todayActions?.actions?.length ?? 0;
+  const hasReflectedToday = reflectionToday?.reflected === true;
+  const reflectPending = !!user && actionsToday >= 1 && !hasReflectedToday && location !== "/reflections";
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row">
@@ -163,6 +183,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex items-stretch h-16">
           {MOBILE_NAV.map((item) => {
             const isActive = location === item.href;
+            const isReflect = item.href === "/reflections";
+            const showBadge = isReflect && reflectPending;
             return (
               <Link
                 key={item.href}
@@ -175,8 +197,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 {isActive && (
                   <span className="absolute top-1 w-1 h-1 rounded-full bg-primary" />
                 )}
-                <item.icon className={`w-5 h-5 ${isActive ? "drop-shadow-[0_0_6px_rgba(124,58,237,0.6)]" : ""}`} />
-                <span className={`text-[10px] font-semibold leading-none ${isActive ? "text-primary" : "text-muted-foreground/70"}`}>
+                {/* Reflect pending badge — amber pulse when action logged, not yet reflected */}
+                {showBadge && (
+                  <span className="absolute top-1.5 right-[calc(50%-10px)] w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                )}
+                <item.icon className={`w-5 h-5 ${isActive ? "drop-shadow-[0_0_6px_rgba(124,58,237,0.6)]" : ""} ${showBadge ? "text-amber-400" : ""}`} />
+                <span className={`text-[10px] font-semibold leading-none ${isActive ? "text-primary" : showBadge ? "text-amber-400" : "text-muted-foreground/70"}`}>
                   {item.label}
                 </span>
               </Link>
