@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk } from "@clerk/react";
 import { useQuery } from "@tanstack/react-query";
-import { useGetMe, useGetTodayActions } from "@workspace/api-client-react";
+import { useGetMe, useGetTodayActions, getGetTodayActionsQueryKey } from "@workspace/api-client-react";
 import {
   LayoutDashboard, User, Map, Activity,
   BookOpen, Mail, FileText, MessageSquare,
@@ -66,7 +66,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // ── Reflect tab pending-badge logic ─────────────────────────────────────────
   // Show an amber dot on the Reflect tab when the user has logged at least one
   // action today but hasn't reflected yet. Fires only for authenticated users.
-  const { data: todayActions } = useGetTodayActions({ query: { enabled: !!user, staleTime: 60_000 } });
+  const { data: todayActions } = useGetTodayActions({ query: { enabled: !!user, staleTime: 60_000, queryKey: getGetTodayActionsQueryKey() } });
   const { data: reflectionToday } = useQuery({
     queryKey: ["reflections", "today"],
     queryFn: async () => {

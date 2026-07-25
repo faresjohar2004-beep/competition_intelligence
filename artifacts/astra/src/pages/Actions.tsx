@@ -1,5 +1,5 @@
 import AppLayout from "@/components/layout/AppLayout";
-import { useGetTodayActions, useLogAction, useGetActionImpact, getGetTodayActionsQueryKey, getGetActionImpactQueryKey, getGetFutureSelfQueryKey, getGetUserStatsQueryKey, getGetActionsQueryKey } from "@workspace/api-client-react";
+import { useGetTodayActions, useLogAction, useGetActionImpact, useGetActions, getGetTodayActionsQueryKey, getGetActionImpactQueryKey, getGetFutureSelfQueryKey, getGetUserStatsQueryKey, getGetActionsQueryKey } from "@workspace/api-client-react";
 import { useMissions, useCompleteMission } from "@/hooks/useMissions";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,7 +30,39 @@ const COLOR_MAP: Record<string, { text: string; bg: string; glow: string; ring: 
   cyan:    { text: "text-cyan-400",    bg: "bg-cyan-500/10",    glow: "shadow-cyan-500/40",    ring: "from-cyan-500 to-sky-400",       hover: "hover:border-cyan-500/40 hover:bg-cyan-500/5",      border: "border-cyan-500/30" },
 };
 
-type CompletedAction = { label: string; impact: string; identity: string; color: string; Icon: React.ComponentType<{ className?: string }> };
+type CompletedAction = { label: string; impact: string; identity: string; color: string; Icon: React.ComponentType<{ className?: string }>; typeCount: number };
+
+// Returns a count-aware proof statement that makes each action feel like accumulating evidence.
+function getProofStatement(label: string, count: number): { badge: string; message: string } {
+  if (count === 1) return {
+    badge: "Proof #1",
+    message: "The first brick. Every identity is built one action at a time.",
+  };
+  if (count < 5) return {
+    badge: `Proof #${count}`,
+    message: `${count} times and counting. The habit is finding its shape.`,
+  };
+  if (count < 10) return {
+    badge: `${label} #${count}`,
+    message: `${count} times. Five is a pattern. You're building something real.`,
+  };
+  if (count < 25) return {
+    badge: `${label} #${count}`,
+    message: `${count} times. This is no longer a decision — it's becoming who you are.`,
+  };
+  if (count < 50) return {
+    badge: `${label} #${count}`,
+    message: `${count} times. You've passed the point where most people quit.`,
+  };
+  if (count < 100) return {
+    badge: `${label} #${count}`,
+    message: `${count} times. Fifty is rare. This is permanent now.`,
+  };
+  return {
+    badge: `${label} #${count}`,
+    message: `${count} times. One hundred. This is who you are — no question.`,
+  };
+}
 
 function CompletionCelebration({ action, streak, completedCount, promiseJustKept, onDismiss }: {
   action: CompletedAction;
@@ -125,16 +157,25 @@ function CompletionCelebration({ action, streak, completedCount, promiseJustKept
           </motion.div>
         )}
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.3, type: "spring" }}
-          className="rounded-2xl border border-white/8 bg-white/4 px-5 py-4 mb-6"
-        >
-          <p className="text-base font-semibold text-white leading-snug">
-            "{action.identity}"
-          </p>
-        </motion.div>
+        {/* Count-aware proof card — core of the identity accumulation moment */}
+        {(() => {
+          const proof = getProofStatement(action.label, action.typeCount);
+          return (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3, type: "spring" }}
+              className="rounded-2xl border border-white/8 bg-white/4 px-5 py-4 mb-6"
+            >
+              <p className={`text-[10px] font-black tracking-[0.25em] uppercase mb-2 ${c.text}`}>
+                {proof.badge}
+              </p>
+              <p className="text-base font-semibold text-white leading-snug">
+                "{proof.message}"
+              </p>
+            </motion.div>
+          );
+        })()}
 
         <motion.div
           initial={{ opacity: 0 }}
@@ -248,6 +289,7 @@ export default function Actions() {
   const { data: todaySummary } = useGetTodayActions();
   const { data: impacts } = useGetActionImpact();
   const { data: missions } = useMissions();
+  const { data: allActions } = useGetActions({ limit: 500 });
   const logAction = useLogAction();
   const completeMission = useCompleteMission();
   const [celebration, setCelebration] = useState<(CompletedAction & { promiseJustKept: boolean }) | null>(null);
@@ -282,12 +324,16 @@ export default function Actions() {
         }
 
         const promiseJustKept = !wasPromiseCompleted && !!missions?.criticalMission;
+        // Count how many times the user has previously logged this action type
+        // +1 for the action they just logged (optimistic, before cache refreshes)
+        const typeCount = ((allActions ?? []) as any[]).filter((a: any) => a.type === action.type).length + 1;
         setCelebration({
           label: action.label,
           impact: action.impact,
           identity: action.identity,
           color: action.color,
           Icon: action.icon,
+          typeCount,
           promiseJustKept,
         });
       },
