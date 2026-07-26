@@ -160,18 +160,36 @@ function getBriefingTier(streakDays: number): BriefingTier {
   };
 }
 
+// Per-action-type personalized body copy for DailyBriefing.
+// Each function takes the weekly count and returns a domain-specific motivational line.
+const ACTION_BRIEFING_BODY: Record<string, (n: number) => string> = {
+  workout:          (n) => `${n} workout${n > 1 ? "s" : ""} this week. Your body is the foundation everything else is built on — and you're actively building it.`,
+  deep_work:        (n) => `${n} deep work session${n > 1 ? "s" : ""} this week. Focus is your compound interest. Every session widens the gap between you and the distracted majority.`,
+  reading:          (n) => `${n} reading session${n > 1 ? "s" : ""} this week. Every page is a deposit into the mind of the person you're becoming.`,
+  learning:         (n) => `${n} learning session${n > 1 ? "s" : ""} this week. Knowledge compounds. You're investing in the version of yourself who shows up a year from now.`,
+  meditation:       (n) => `${n} meditation session${n > 1 ? "s" : ""} this week. Mental clarity is a performance multiplier most people ignore. You don't.`,
+  content_creation: (n) => `${n} creation session${n > 1 ? "s" : ""} this week. You're building a body of work, an audience, a legacy — one piece at a time.`,
+  saving:           (n) => `${n} saving action${n > 1 ? "s" : ""} this week. Wealth is built in the quiet moments no one sees. Your future self is watching.`,
+  sleep:            (n) => `${n} recovery session${n > 1 ? "s" : ""} this week. Sleep is the hidden variable that elite performers protect. You get it.`,
+  water:            (n) => `${n} hydration check${n > 1 ? "s" : ""} this week. The smallest disciplines stack into elite performance over time.`,
+};
+
 function DailyBriefing({
   firstName,
   streakDays,
   actionsToday,
   alignScore,
   tomorrowPromise,
+  dominantActionType,
+  weeklyActionCount,
 }: {
   firstName: string;
   streakDays: number;
   actionsToday: number;
   alignScore: number;
   tomorrowPromise?: string | null;
+  dominantActionType?: string | null;
+  weeklyActionCount?: number;
 }) {
   const now = new Date();
   const dayName = DAY_NAMES[now.getDay()];
@@ -185,7 +203,13 @@ function DailyBriefing({
   const bodyIdx = (seed + 1) % tier.bodies.length;
 
   const headline = tier.headlines[headlineIdx];
-  const body = tier.bodies[bodyIdx];
+  const genericBody = tier.bodies[bodyIdx];
+
+  // If the user has weekly activity data, replace the generic body with a personalized
+  // domain-specific line that makes ASTRA feel like it's actually watching their progress.
+  const body = (dominantActionType && weeklyActionCount && weeklyActionCount > 0)
+    ? (ACTION_BRIEFING_BODY[dominantActionType]?.(weeklyActionCount) ?? genericBody)
+    : genericBody;
 
   // Progress to next milestone
   const progressToNext = Math.min((streakDays / tier.nextMilestone) * 100, 100);
@@ -2029,6 +2053,25 @@ export default function Dashboard() {
   const actionsToday = todayActions?.actions?.length ?? 0;
   const identityScore = currentSelf?.overallScore ?? 0;
 
+  // Derive dominant action type + weekly count from the already-fetched action history.
+  // Used to personalise the DailyBriefing body so ASTRA references the user's actual week.
+  const { dominantActionType, weeklyActionCount } = useMemo(() => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const typeCounts: Record<string, number> = {};
+    for (const a of allActions) {
+      if (new Date(a.createdAt) >= sevenDaysAgo) {
+        typeCounts[a.type] = (typeCounts[a.type] ?? 0) + 1;
+      }
+    }
+    const sorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+    const dominant = sorted[0];
+    return {
+      dominantActionType: dominant?.[0] ?? null,
+      weeklyActionCount: dominant?.[1] ?? 0,
+    };
+  }, [allActions]);
+
   const loggedTypesForPromise = useMemo(
     () => new Set((todayActions?.actions ?? []).map((a: any) => a.type)),
     [todayActions],
@@ -2245,6 +2288,8 @@ export default function Dashboard() {
           actionsToday={actionsToday}
           alignScore={alignScore}
           tomorrowPromise={tomorrowPromise}
+          dominantActionType={dominantActionType}
+          weeklyActionCount={weeklyActionCount}
         />
 
         {/* Command Stats Bar — Future Alignment, Identity Score, Streak, Today's Promise */}
