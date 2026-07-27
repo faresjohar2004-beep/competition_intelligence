@@ -1367,6 +1367,104 @@ function PromiseInput({
   );
 }
 
+// ─── Closing Promise Card ─────────────────────────────────────────────────────
+// Persistent bottom-of-Dashboard card that appears when the user has logged
+// at least one action today but hasn't committed to tomorrow yet.
+// Unlike TomorrowPreview (one-shot modal), this stays until the promise is set.
+function ClosingPromiseCard({
+  dominantActionType,
+  onSave,
+}: {
+  dominantActionType: string | null;
+  onSave: (p: string) => void;
+}) {
+  const [value, setValue] = useState("");
+  const [sealed, setSealed] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const suggestions: [string, string, string] =
+    PROMISE_SUGGESTIONS[dominantActionType ?? ""] ?? DEFAULT_SUGGESTIONS;
+
+  const handleSave = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setValue(trimmed);
+    setSealed(true);
+    onSave(trimmed);
+  };
+
+  if (sealed) {
+    return (
+      <motion.div
+        initial={{ opacity: 1 }}
+        animate={{ opacity: 0 }}
+        transition={{ delay: 1.8, duration: 0.6 }}
+        className="mt-6 flex items-center gap-2.5 justify-center py-3 text-emerald-400"
+      >
+        <CheckCircle2 className="w-4 h-4" />
+        <span className="text-sm font-bold">Promise sealed. See you tomorrow.</span>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.1 }}
+      className="mt-6 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent px-5 py-5 relative overflow-hidden"
+    >
+      {/* Subtle glow */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/8 rounded-full blur-2xl pointer-events-none" />
+
+      <div className="relative z-10">
+        <div className="flex items-center gap-2 mb-1">
+          <PenLine className="w-3.5 h-3.5 text-primary/60" />
+          <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-primary/60">
+            Before you close tonight
+          </p>
+        </div>
+        <p className="text-sm font-bold text-white mb-4">
+          One commitment seals the day. What will you do tomorrow?
+        </p>
+
+        {/* Smart suggestion chips */}
+        <div className="flex flex-col gap-1.5 mb-3">
+          {suggestions.map((s, i) => (
+            <button
+              key={s}
+              onClick={() => handleSave(s)}
+              className="w-full text-left text-xs px-3 py-2.5 rounded-xl border border-white/8 bg-white/3 text-muted-foreground hover:border-primary/30 hover:bg-primary/8 hover:text-white transition-all"
+            >
+              <span className="mr-1.5 opacity-40">→</span>{s}
+            </button>
+          ))}
+        </div>
+
+        {/* Free-text input */}
+        <div className="flex gap-2">
+          <input
+            ref={inputRef}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSave(value)}
+            placeholder="Or write your own…"
+            maxLength={120}
+            className="flex-1 h-9 px-3 rounded-xl bg-black/20 border border-primary/15 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-primary/35 transition-colors min-w-0"
+          />
+          <button
+            onClick={() => handleSave(value)}
+            disabled={!value.trim()}
+            className="h-9 px-3 rounded-xl bg-primary/15 border border-primary/25 text-primary text-xs font-bold hover:bg-primary/25 transition-all disabled:opacity-30 shrink-0 whitespace-nowrap"
+          >
+            Seal it →
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Notification Permission Banner ──────────────────────────────────────────
 const NOTIF_DISMISS_KEY = "astra_notif_banner_dismissed";
 
@@ -2601,6 +2699,16 @@ export default function Dashboard() {
 
         {/* Daily Momentum — last 7 days ritual */}
         <WeeklyScorecard allActions={allActions} streakDays={streakDays} alignScore={alignScore} identityScore={identityScore} />
+
+        {/* Closing Promise Card — persistent bottom reminder when user has acted but hasn't committed to tomorrow */}
+        <AnimatePresence>
+          {actionsToday >= 1 && !tomorrowPromise && !showTomorrowPreview && (
+            <ClosingPromiseCard
+              dominantActionType={dominantActionType}
+              onSave={savePromise}
+            />
+          )}
+        </AnimatePresence>
 
       </div>
     </AppLayout>
