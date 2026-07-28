@@ -2,7 +2,8 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/components/layout/AppLayout";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, CheckCircle2, Sparkles, ChevronDown, Flame, Zap } from "lucide-react";
+import { BookOpen, CheckCircle2, Sparkles, ChevronDown, Flame, Zap, ArrowRight } from "lucide-react";
+import { Link } from "wouter";
 import { toast } from "@/hooks/use-toast";
 import { useGetTodayActions, useGetUserStats } from "@workspace/api-client-react";
 import { useMissions } from "@/hooks/useMissions";
@@ -201,9 +202,23 @@ export default function Reflections() {
           >
             <Sparkles className="w-8 h-8 text-primary mx-auto mb-3" />
             <h2 className="text-xl font-black text-white mb-2">Reflection Saved</h2>
-            <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+            <p className="text-muted-foreground text-sm max-w-xs mx-auto mb-7">
               Self-awareness is evidence. Your future self is watching.
             </p>
+            <div className="flex flex-col sm:flex-row gap-2 max-w-xs mx-auto">
+              <Link
+                href="/future"
+                className="flex-1 h-10 rounded-xl bg-primary/15 border border-primary/25 text-primary font-bold text-sm hover:bg-primary/25 transition-all flex items-center justify-center gap-1.5"
+              >
+                See Your Progress <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+              <Link
+                href="/dashboard"
+                className="flex-1 h-10 rounded-xl border border-white/8 bg-white/3 text-white/40 font-medium text-sm hover:bg-white/6 hover:text-white/60 transition-all flex items-center justify-center"
+              >
+                Dashboard
+              </Link>
+            </div>
           </motion.div>
         ) : (
           <motion.div

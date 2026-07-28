@@ -59,6 +59,75 @@ type BriefingTier = {
   milestoneLabel: string;
 };
 
+// ─── Score gain map (numeric, per action type) ───────────────────────────────
+type ScoreDim = "health" | "wealth" | "discipline" | "knowledge" | "confidence";
+const SCORE_GAINS: Record<string, Partial<Record<ScoreDim, number>>> = {
+  workout:          { health: 2,    discipline: 1            },
+  deep_work:        { discipline: 2, wealth: 1.5             },
+  learning:         { knowledge: 2,  wealth: 1              },
+  content_creation: { confidence: 2, wealth: 1.5            },
+  saving:           { wealth: 2,    discipline: 1            },
+  reading:          { knowledge: 1.5                        },
+  meditation:       { discipline: 1.5                       },
+  sleep:            { health: 1.5                           },
+  water:            { health: 1                             },
+  promise:          { discipline: 1.5, confidence: 1.5      },
+};
+
+// ─── Today's Gains Bar ────────────────────────────────────────────────────────
+// Compact animated summary of cumulative score gains from today's logged actions.
+// Closes the "Build Evidence" gap — users see exactly what today constructed.
+function TodayGainsBar({ gains }: { gains: Record<ScoreDim, number> }) {
+  const DIMS: { key: ScoreDim; label: string; textColor: string; borderColor: string; bgColor: string; icon: React.ElementType }[] = [
+    { key: "health",     label: "Health",     textColor: "text-emerald-400", borderColor: "border-emerald-500/20", bgColor: "bg-emerald-500/8",  icon: Dumbbell   },
+    { key: "wealth",     label: "Wealth",     textColor: "text-amber-400",   borderColor: "border-amber-500/20",   bgColor: "bg-amber-500/8",    icon: DollarSign },
+    { key: "discipline", label: "Discipline", textColor: "text-blue-400",    borderColor: "border-blue-500/20",    bgColor: "bg-blue-500/8",     icon: Shield     },
+    { key: "knowledge",  label: "Knowledge",  textColor: "text-violet-400",  borderColor: "border-violet-500/20",  bgColor: "bg-violet-500/8",   icon: Brain      },
+    { key: "confidence", label: "Confidence", textColor: "text-orange-400",  borderColor: "border-orange-500/20",  bgColor: "bg-orange-500/8",   icon: Zap        },
+  ];
+
+  const active = DIMS.filter(d => (gains[d.key] ?? 0) > 0);
+  if (active.length === 0) return null;
+
+  const totalGain = active.reduce((sum, d) => sum + (gains[d.key] ?? 0), 0);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.05 }}
+      className="rounded-2xl border border-white/6 bg-card/60 px-5 py-4 mt-5"
+    >
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/30">Today's Gains</p>
+        <span className="text-[10px] font-bold text-white/20">
+          +{totalGain % 1 === 0 ? totalGain : totalGain.toFixed(1)}% total
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {active.map((d, i) => {
+          const val = gains[d.key] ?? 0;
+          return (
+            <motion.div
+              key={d.key}
+              initial={{ opacity: 0, scale: 0.82 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.08 + i * 0.07, type: "spring", stiffness: 380, damping: 22 }}
+              className={`flex items-center gap-1.5 rounded-xl border ${d.borderColor} ${d.bgColor} px-3 py-2`}
+            >
+              <d.icon className={`w-3 h-3 ${d.textColor} shrink-0`} />
+              <span className={`text-xs font-black ${d.textColor}`}>
+                +{val % 1 === 0 ? val : val.toFixed(1)}%
+              </span>
+              <span className="text-xs text-white/35">{d.label}</span>
+            </motion.div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
 function getBriefingTier(streakDays: number): BriefingTier {
   if (streakDays === 0) return {
     word: "BEGIN", wordColor: "text-white",
@@ -2174,6 +2243,19 @@ export default function Dashboard() {
     () => new Set((todayActions?.actions ?? []).map((a: any) => a.type)),
     [todayActions],
   );
+
+  // Cumulative score gains from today's logged actions — fed into TodayGainsBar
+  const todayGains = useMemo<Record<ScoreDim, number>>(() => {
+    const base: Record<ScoreDim, number> = { health: 0, wealth: 0, discipline: 0, knowledge: 0, confidence: 0 };
+    for (const action of (todayActions?.actions ?? [])) {
+      const impact = SCORE_GAINS[action.type as string];
+      if (!impact) continue;
+      for (const [dim, val] of Object.entries(impact) as [ScoreDim, number][]) {
+        base[dim] += val;
+      }
+    }
+    return base;
+  }, [todayActions]);
   const promiseText: string | null = missions?.criticalMission ?? tomorrowPromise ?? null;
   const promiseCompleted: boolean = missions?.criticalCompleted ?? false;
 
@@ -2696,6 +2778,11 @@ export default function Dashboard() {
             </Link>
           </motion.div>
         </div>
+
+        {/* Today's Gains — cumulative score impact of all logged actions */}
+        <AnimatePresence>
+          {actionsToday >= 1 && <TodayGainsBar gains={todayGains} />}
+        </AnimatePresence>
 
         {/* Daily Momentum — last 7 days ritual */}
         <WeeklyScorecard allActions={allActions} streakDays={streakDays} alignScore={alignScore} identityScore={identityScore} />
