@@ -4,8 +4,9 @@ import { motion } from "framer-motion";
 import React, { useMemo } from "react";
 import {
   Shield, Flame, CheckCircle2, Dumbbell, BookOpen, Brain, Video,
-  Leaf, DollarSign, Laptop, Moon, Droplets, Zap, TrendingUp, Calendar, Clock, Star,
+  Leaf, DollarSign, Laptop, Moon, Droplets, Zap, TrendingUp, Calendar, Clock, Star, ArrowRight,
 } from "lucide-react";
+import { Link } from "wouter";
 
 // ─── Action display config ───────────────────────────────────────────────────
 const ACTION_DISPLAY: Record<string, {
@@ -471,9 +472,24 @@ export default function Evidence() {
           >
             <Star className="w-5 h-5 text-primary mx-auto mb-3 fill-primary/30" />
             <p className="text-sm font-bold text-white mb-1">{totalActions} promises kept. Every one is permanent.</p>
-            <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+            <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-6">
               This vault is your uneditable record. The person in here is who you actually are — not who you say you'll be.
             </p>
+            {/* Loop close — keep building momentum */}
+            <div className="flex flex-col sm:flex-row gap-2 max-w-xs mx-auto">
+              <Link
+                href="/actions"
+                className="flex-1 h-10 rounded-xl bg-primary/15 border border-primary/25 text-primary font-bold text-sm hover:bg-primary/25 transition-all flex items-center justify-center gap-1.5"
+              >
+                Add to Your Vault <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+              <Link
+                href="/dashboard"
+                className="flex-1 h-10 rounded-xl border border-white/8 bg-white/3 text-white/40 font-medium text-sm hover:bg-white/6 hover:text-white/60 transition-all flex items-center justify-center"
+              >
+                Dashboard
+              </Link>
+            </div>
           </motion.div>
         )}
 

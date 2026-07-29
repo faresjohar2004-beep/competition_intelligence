@@ -777,8 +777,9 @@ function AlignmentOrb({ score }: { score: number }) {
   );
 }
 
-type StreakState = "zero" | "unprotected" | "safe" | "legendary";
-function getStreakState(streakDays: number, actionsToday: number): StreakState {
+type StreakState = "zero" | "comeback" | "unprotected" | "safe" | "legendary";
+function getStreakState(streakDays: number, actionsToday: number, hasHistory = false): StreakState {
+  if (streakDays === 0 && actionsToday === 0 && hasHistory) return "comeback";
   if (streakDays === 0 && actionsToday === 0) return "zero";
   if (actionsToday === 0) return "unprotected";
   if (actionsToday >= 6) return "legendary";
@@ -916,13 +917,43 @@ function StreakChain({ allActions, actionsToday }: { allActions: any[]; actionsT
 function StreakStatusBar({ streakDays, actionsToday, firstName, allActions }: { streakDays: number; actionsToday: number; firstName: string; allActions: any[] }) {
   const now = new Date();
   const hour = now.getHours();
-  const state = getStreakState(streakDays, actionsToday);
+  const hasHistory = allActions.length > 0;
+  const state = getStreakState(streakDays, actionsToday, hasHistory);
   const minutesLeft = (23 - hour) * 60 + (59 - now.getMinutes());
   const hoursLeft = Math.floor(minutesLeft / 60);
   const timeLabel = hoursLeft > 1 ? `${hoursLeft}h left today` : minutesLeft > 30 ? `${hoursLeft}h ${minutesLeft % 60}m left` : `${minutesLeft}m left — act now`;
   const isLate = hour >= 20;
 
+  // Best-streak computation — used by comeback state to honour past effort
+  const bestStreak = useMemo(() => {
+    if (allActions.length === 0) return 0;
+    const days = Array.from(
+      new Set(allActions.map((a: any) => new Date(a.completedAt).toISOString().split("T")[0]))
+    ).sort();
+    let max = 1, cur = 1;
+    for (let i = 1; i < days.length; i++) {
+      const diff = (new Date(days[i]).getTime() - new Date(days[i - 1]).getTime()) / 86_400_000;
+      if (diff === 1) { cur++; if (cur > max) max = cur; } else cur = 1;
+    }
+    return max;
+  }, [allActions]);
+
   const config = {
+    // User has history but broke their streak — identity-preserving comeback copy
+    comeback: {
+      border: "border-indigo-500/30", bg: "bg-indigo-500/5",
+      icon: <Flame className="w-5 h-5 text-indigo-400" />,
+      headline: `Welcome back, ${firstName}.`,
+      sub: bestStreak > 1
+        ? `Your ${bestStreak}-day best is permanent evidence of who you are. One action today restarts your streak.`
+        : "One day doesn't define you. Log one action today and you're back on track.",
+      badge: bestStreak > 1 ? (
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-400 whitespace-nowrap">
+          <Trophy className="w-3 h-3" />{bestStreak}d best
+        </div>
+      ) : null,
+      cta: { label: "Restart My Streak →", href: "/actions", color: "bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 font-bold" },
+    },
     zero: {
       border: "border-white/8", bg: "bg-white/2",
       icon: <Flame className="w-5 h-5 text-muted-foreground" />,
@@ -969,8 +1000,6 @@ function StreakStatusBar({ streakDays, actionsToday, firstName, allActions }: { 
       cta: { label: "View Missions →", href: "/missions", color: "bg-white/8 hover:bg-white/12 text-white border border-white/10" },
     },
   }[state];
-
-  const hasHistory = allActions.length > 0;
 
   // Once today is already safe (streak protected, non-milestone), the full urgency
   // card is redundant with the stats bar + promise card above — collapse it to a
