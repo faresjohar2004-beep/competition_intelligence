@@ -1,0 +1,27 @@
+# Astra OS
+
+> Astra OS is an AI-powered identity operating system that helps users become who they said they'd be — through daily actions, streak tracking, identity reinforcement, and a personal AI coach.
+
+Astra OS is not a task manager. It is a structured system for building a new identity through daily evidence: users make a promise, complete an action, build proof of who they are becoming, and return the next day stronger.
+
+## Main Pages
+
+- [Astra OS Home](https://2f857509-3cd0-4e54-a3ca-7f90d2575605-00-1or9k85ss2v99.sisko.replit.dev/): Discover how Astra OS helps users close the gap between who they are and who they want to be.
+- [Start Assessment](https://2f857509-3cd0-4e54-a3ca-7f90d2575605-00-1or9k85ss2v99.sisko.replit.dev/onboarding): Complete a 45-second identity assessment and generate your personal Future Self profile.
+- [Sign Up](https://2f857509-3cd0-4e54-a3ca-7f90d2575605-00-1or9k85ss2v99.sisko.replit.dev/sign-up): Create an Astra OS account and begin your identity transformation.
+- [Sign In](https://2f857509-3cd0-4e54-a3ca-7f90d2575605-00-1or9k85ss2v99.sisko.replit.dev/sign-in): Access your existing Astra OS account.
+
+## Product Features
+
+Astra OS helps users across six areas:
+
+- **Daily Actions** — Log workouts, deep work, learning, meditation, and other identity-building habits to accumulate evidence of who you are becoming.
+- **Streak Tracking** — Protect your daily streak with a visual chain, streak freezes, and identity-preserving comeback flows.
+- **AI Coach** — An AI coach that knows your goals, scores, missions, and history, providing contextual daily guidance.
+- **Future Self Scores** — Track Health, Wealth, Discipline, Knowledge, and Confidence scores that update in real time as you act.
+- **Daily Missions** — AI-generated critical mission, secondary missions, and a courage challenge calibrated to your level each day.
+- **Reflection Journal** — Context-aware identity journaling that turns each day's actions into permanent evidence of growth.
+
+## About
+
+Astra OS is built on the principle that identity change precedes behaviour change. Every action logged is not a task completed — it is evidence of who you are. The system is designed around one core loop: Make Promise → Complete Action → Build Evidence → Strengthen Identity → Increase Confidence → Return Tomorrow.

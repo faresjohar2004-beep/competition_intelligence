@@ -1,0 +1,69 @@
+Fix the existing llms.txt file for the Astra OS website.
+
+Do not change the website design or application functionality.
+
+The current audit reports:
+
+1. The llms.txt file is missing a required H1 header.
+2. The llms.txt file does not contain any links.
+
+Create or replace the file at the website root:
+
+/llms.txt
+
+The file must be served publicly at:
+
+https://YOUR-ASTRA-DOMAIN.com/llms.txt
+
+Use valid Markdown syntax.
+
+Use this structure and replace placeholder URLs with the real published Astra OS URLs:
+
+# Astra OS
+
+> Astra OS is a personal operating system designed to help users identify their priorities, turn goals into clear daily actions, maintain focus, and build consistent execution.
+
+Astra OS is not simply a task manager. It provides a structured system for planning, prioritizing, executing, and reviewing meaningful work.
+
+## Main Pages
+
+- [Astra OS Home](https://YOUR-ASTRA-DOMAIN.com/): Learn how Astra OS helps users organize priorities and execute consistently.
+- [Features](https://YOUR-ASTRA-DOMAIN.com/features): Explore Astra OS features for planning, focus, execution, progress tracking, and review.
+- [How It Works](https://YOUR-ASTRA-DOMAIN.com/how-it-works): Understand the Astra OS workflow from identifying priorities to completing daily actions.
+- [Pricing](https://YOUR-ASTRA-DOMAIN.com/pricing): View available Astra OS plans and included features.
+- [Sign Up](https://YOUR-ASTRA-DOMAIN.com/signup): Create an Astra OS account.
+- [Sign In](https://YOUR-ASTRA-DOMAIN.com/login): Access an existing Astra OS account.
+
+## Product Information
+
+- [Dashboard](https://YOUR-ASTRA-DOMAIN.com/dashboard): Access the Astra OS personal execution dashboard.
+- [Daily Priorities](https://YOUR-ASTRA-DOMAIN.com/priorities): Organize and focus on the most important daily actions.
+- [Progress](https://YOUR-ASTRA-DOMAIN.com/progress): Review completed actions and consistency over time.
+
+## Company and Support
+
+- [About Astra OS](https://YOUR-ASTRA-DOMAIN.com/about): Learn about the purpose and philosophy behind Astra OS.
+- [Frequently Asked Questions](https://YOUR-ASTRA-DOMAIN.com/faq): Find answers to common questions about Astra OS.
+- [Contact](https://YOUR-ASTRA-DOMAIN.com/contact): Contact the Astra OS team.
+- [Privacy Policy](https://YOUR-ASTRA-DOMAIN.com/privacy): Read the Astra OS privacy policy.
+- [Terms of Service](https://YOUR-ASTRA-DOMAIN.com/terms): Read the Astra OS terms of service.
+
+## Optional
+
+- [Astra OS Blog](https://YOUR-ASTRA-DOMAIN.com/blog): Articles about productivity, discipline, focus, planning, and consistent execution.
+
+Implementation requirements:
+
+- The first line must be exactly: # Astra OS
+- Keep exactly one H1 heading.
+- Use H2 headings to organize page categories.
+- Include only real, publicly accessible Astra OS URLs.
+- Remove links to routes that do not exist.
+- Do not link to private or authenticated-only pages unless they are intentionally public.
+- Serve the file as plain text or Markdown-compatible text.
+- Ensure the response returns HTTP status 200.
+- Do not return HTML around the file.
+- Ensure the filename is lowercase: llms.txt
+- Ensure it is placed at the root of the deployed website.
+- Verify that visiting /llms.txt displays the Markdown content directly.
+- Rerun the Agent Accessibility audit after deployment.
