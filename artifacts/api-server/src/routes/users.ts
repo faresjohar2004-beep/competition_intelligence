@@ -3,6 +3,7 @@ import { db, usersTable, futureSelfTable, actionsTable, lifeMapTable, chaptersTa
 import { eq, count, sql, gte, and } from "drizzle-orm";
 import { requireAuth, requireAuthWithUser } from "../lib/auth";
 import { clampScore, calcOverallScore } from "../lib/scores";
+import { localDateStr, localYesterdayStr } from "../lib/dateUtils";
 
 const router = Router();
 
@@ -136,14 +137,17 @@ router.post("/me/streak-freeze", requireAuthWithUser, async (req, res) => {
     return res.status(400).json({ error: "Streak freeze already used this month" });
   }
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  // Use the user's local timezone so "today" and "yesterday" are correct for
+  // their clock — not UTC (which can be a full day ahead for US users at night).
+  const todayStr = localDateStr(user.timezone);
+  const yesterdayStr = localYesterdayStr(user.timezone);
+
   if (user.lastActiveDate === todayStr) {
     return res.status(400).json({ error: "You already logged today — no freeze needed" });
   }
 
   // Backdate lastActiveDate to yesterday so the next action extends the streak
   const yesterday = new Date(Date.now() - 86400000);
-  const yesterdayStr = yesterday.toISOString().split("T")[0];
 
   // Insert a streak_freeze record (tracks usage + shows in Evidence Vault)
   yesterday.setHours(12, 0, 0, 0);

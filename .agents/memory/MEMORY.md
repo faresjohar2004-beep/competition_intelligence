@@ -9,5 +9,6 @@
 - [FutureSelf score history](astra-futureself-scores.md) — /scores used Math.random() scrambling chart every load; fixed to reconstruct real history: score_on_D = current − sum(impacts after day D)
 - [Coach AI context](astra-coach-context.md) — coaching route now queries missions+completions, today's actions, and life scores in Promise.all; injects full real-time context into every AI request
 - [Mission complete → streak protection](astra-mission-streak.md) — POST /api/missions/complete was only flipping booleans; now also inserts a "promise" action, updates futureSelf scores, lifeMap, streak, and chapter unlocks
+- [Timezone-aware streak dates](astra-tz-streak.md) — streak and "today" logic must use localDateStr(user.timezone) not toISOString(); shared util at api-server/src/lib/dateUtils.ts; GET /today uses AT TIME ZONE in SQL
 - [Silent mutation failures](astra-silent-mutation-failures.md) — ASTRA had a global Toaster mounted but zero onError handlers on core-loop mutations; silent failures on streak/promise actions are a high-risk churn cause worth auditing for in any habit app
 - [Dashboard information hierarchy](astra-dashboard-hierarchy.md) — flat stacking of 15+ equal-weight sections blurs daily-ritual vs optional-exploration content; a labeled divider between them is a cheap declutter fix

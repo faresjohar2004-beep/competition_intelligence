@@ -3,6 +3,7 @@ import { db, actionsTable, futureSelfTable, usersTable, lifeMapTable, userChapte
 import { eq, sql, count, sum } from "drizzle-orm";
 import { requireAuthWithUser } from "../lib/auth";
 import { getActionImpact, clampScore, calcOverallScore, type ActionType } from "../lib/scores";
+import { localDateStr, localYesterdayStr, pgTimezone } from "../lib/dateUtils";
 
 const router = Router();
 
@@ -92,10 +93,11 @@ router.post("/", requireAuthWithUser, async (req, res) => {
     }
   }
 
-  // Update streak
-  const todayStr = new Date().toISOString().split("T")[0];
+  // Update streak — use the user's local timezone so midnight is correct for their clock,
+  // not UTC (which would break streaks for US users logging after ~5–7 PM local time).
+  const todayStr = localDateStr(user.timezone);
   if (user.lastActiveDate !== todayStr) {
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+    const yesterday = localYesterdayStr(user.timezone);
     const newStreak = user.lastActiveDate === yesterday ? user.streakDays + 1 : 1;
     await db.update(usersTable).set({ streakDays: newStreak, lastActiveDate: todayStr, updatedAt: new Date() })
       .where(eq(usersTable.id, user.id));
@@ -131,13 +133,16 @@ router.post("/", requireAuthWithUser, async (req, res) => {
 // GET /api/actions/today
 router.get("/today", requireAuthWithUser, async (req, res) => {
   const user = (req as any).user;
-  const todayStr = new Date().toISOString().split("T")[0];
+  // Evaluate the action timestamp in the user's local timezone so actions logged
+  // after UTC midnight (but before local midnight) still count as "today".
+  const tz = pgTimezone(user.timezone);
+  const todayStr = localDateStr(user.timezone);
   const actions = await db.select().from(actionsTable).where(
-    sql`${actionsTable.userId} = ${user.id} AND DATE(${actionsTable.completedAt}) = ${todayStr}`
+    sql`${actionsTable.userId} = ${user.id} AND DATE(${actionsTable.completedAt} AT TIME ZONE ${tz}) = ${todayStr}`
   );
   const completedTypes = new Set(actions.map(a => a.type)).size;
   res.json({
-    date: todayStr,
+    date: todayStr, // local date in user's timezone
     actions: actions.map(a => ({ ...a, completedAt: a.completedAt.toISOString() })),
     completedTypes,
     totalPossibleTypes: 9,

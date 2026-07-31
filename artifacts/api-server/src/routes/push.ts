@@ -5,6 +5,7 @@ import { eq, sql } from "drizzle-orm";
 import { requireAuthWithUser } from "../lib/auth";
 import { logger } from "../lib/logger";
 import { generateDailyMissions } from "../lib/ai";
+import { localHour, localDateStr } from "../lib/dateUtils";
 
 const router = Router();
 
@@ -47,34 +48,6 @@ router.delete("/unsubscribe", requireAuthWithUser, async (req, res) => {
   }
   res.json({ ok: true });
 });
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Return the user's current local hour (0-23) given an IANA timezone string.
- *  Falls back to "America/New_York" for existing users without a stored timezone. */
-function localHour(timezone: string | null): number {
-  const tz = timezone || "America/New_York";
-  try {
-    return parseInt(
-      new Intl.DateTimeFormat("en-US", { hour: "numeric", hour12: false, timeZone: tz }).format(new Date()),
-      10,
-    );
-  } catch {
-    // Unknown timezone string — fall back to UTC
-    return new Date().getUTCHours();
-  }
-}
-
-/** Return today's date string (YYYY-MM-DD) in the user's local timezone. */
-function localDateStr(timezone: string | null): string {
-  const tz = timezone || "America/New_York";
-  try {
-    // toLocaleDateString with "en-CA" locale returns YYYY-MM-DD
-    return new Date().toLocaleDateString("en-CA", { timeZone: tz });
-  } catch {
-    return new Date().toISOString().split("T")[0];
-  }
-}
 
 // ─── Cron-callable: send 7pm LOCAL-TIME reminders ────────────────────────────
 // Called every hour. Each run only sends to users whose local clock reads 7PM
