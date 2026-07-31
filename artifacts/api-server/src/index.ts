@@ -45,12 +45,18 @@ if (Number.isNaN(port) || port <= 0) {
 
 await initStripe();
 
-// ─── Daily 8pm UTC nightly jobs ───────────────────────────────────────────────
-// 1. Push reminders to users who haven't logged today
-// 2. Pre-generate tomorrow's missions so the Missions page loads instantly at midnight
-cron.schedule("0 20 * * *", () => {
-  logger.info("Running nightly cron jobs (8pm UTC)");
+// ─── Hourly jobs ──────────────────────────────────────────────────────────────
+// Push reminders: runs every hour, but sendDailyReminders() only sends to users
+// whose local clock reads 7PM — so each user gets their reminder at the right
+// time regardless of timezone (replaces the old fixed 8PM UTC blast).
+// Pre-generate missions: still fires once daily at 8PM UTC for active users.
+cron.schedule("0 * * * *", () => {
+  logger.info("Running hourly push reminder check (timezone-aware 7PM local)");
   sendDailyReminders().catch((err) => logger.error({ err }, "Push reminder job failed"));
+});
+
+cron.schedule("0 20 * * *", () => {
+  logger.info("Running nightly mission pre-generation (8pm UTC)");
   preGenerateTomorrowMissions().catch((err) => logger.error({ err }, "Mission pre-generation failed"));
 });
 

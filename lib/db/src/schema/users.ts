@@ -29,6 +29,7 @@ export const usersTable = pgTable("users", {
   tomorrowPromise: text("tomorrow_promise"),
   currentIdentity: text("current_identity"),
   desiredIdentity: text("desired_identity"),
+  timezone: text("timezone"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

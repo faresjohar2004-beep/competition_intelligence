@@ -48,14 +48,42 @@ router.delete("/unsubscribe", requireAuthWithUser, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ─── Cron-callable: send 8pm reminders to users who haven't logged today ─────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Return the user's current local hour (0-23) given an IANA timezone string.
+ *  Falls back to "America/New_York" for existing users without a stored timezone. */
+function localHour(timezone: string | null): number {
+  const tz = timezone || "America/New_York";
+  try {
+    return parseInt(
+      new Intl.DateTimeFormat("en-US", { hour: "numeric", hour12: false, timeZone: tz }).format(new Date()),
+      10,
+    );
+  } catch {
+    // Unknown timezone string — fall back to UTC
+    return new Date().getUTCHours();
+  }
+}
+
+/** Return today's date string (YYYY-MM-DD) in the user's local timezone. */
+function localDateStr(timezone: string | null): string {
+  const tz = timezone || "America/New_York";
+  try {
+    // toLocaleDateString with "en-CA" locale returns YYYY-MM-DD
+    return new Date().toLocaleDateString("en-CA", { timeZone: tz });
+  } catch {
+    return new Date().toISOString().split("T")[0];
+  }
+}
+
+// ─── Cron-callable: send 7pm LOCAL-TIME reminders ────────────────────────────
+// Called every hour. Each run only sends to users whose local clock reads 7PM
+// and who haven't logged an action yet today (in their local timezone).
 export async function sendDailyReminders() {
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
     logger.warn("VAPID keys not configured — skipping push reminders");
     return;
   }
-
-  const todayStr = new Date().toISOString().split("T")[0];
 
   const subs = await db
     .select({
@@ -66,14 +94,21 @@ export async function sendDailyReminders() {
       streakDays: usersTable.streakDays,
       lastActiveDate: usersTable.lastActiveDate,
       name: usersTable.name,
+      timezone: usersTable.timezone,
     })
     .from(pushSubscriptionsTable)
     .innerJoin(usersTable, eq(pushSubscriptionsTable.userId, usersTable.id));
 
-  const inactive = subs.filter((s) => s.lastActiveDate !== todayStr);
-  logger.info({ count: inactive.length }, "Sending push reminders");
+  // Only send to users whose local time is 7PM (hour 19) and who haven't logged today
+  const targets = subs.filter((s) => {
+    const hour = localHour(s.timezone);
+    const todayLocal = localDateStr(s.timezone);
+    return hour === 19 && s.lastActiveDate !== todayLocal;
+  });
 
-  for (const sub of inactive) {
+  logger.info({ total: subs.length, sending: targets.length }, "Timezone-aware push: 7pm local cohort");
+
+  for (const sub of targets) {
     const firstName = sub.name?.split(" ")[0] ?? "Hey";
     const streakLine =
       sub.streakDays > 0

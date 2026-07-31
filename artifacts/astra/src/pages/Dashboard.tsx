@@ -2288,6 +2288,26 @@ export default function Dashboard() {
   const promiseText: string | null = missions?.criticalMission ?? tomorrowPromise ?? null;
   const promiseCompleted: boolean = missions?.criticalCompleted ?? false;
 
+  // ── Silent timezone detection ──────────────────────────────────────────────
+  // Fires once per user when their profile loads without a stored timezone.
+  // Detects the browser's IANA timezone and PATCHes it silently — no UI impact.
+  // The cron job uses this to send push notifications at the user's local 7PM
+  // instead of a fixed UTC hour that lands mid-afternoon for US users.
+  useEffect(() => {
+    if (!user || (user as any).timezone) return; // already set or not loaded
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz) {
+        updateMe.mutate({ data: { timezone: tz } } as any, {
+          onSuccess: () => qc.invalidateQueries({ queryKey: getGetMeQueryKey() }),
+        });
+      }
+    } catch {
+      // Intl not available — skip silently
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]); // only re-run if the user identity changes
+
   // Auto-show TomorrowPreview for users who logged their first action outside the Dashboard
   // (e.g. from the Actions page or Missions page) and haven't committed to tomorrow yet.
   // Guards: only fires once per session, not during an in-progress QuickLog animation,
