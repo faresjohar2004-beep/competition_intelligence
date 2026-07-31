@@ -140,21 +140,22 @@ router.post("/me/streak-freeze", requireAuthWithUser, async (req, res) => {
   // Use the user's local timezone so "today" and "yesterday" are correct for
   // their clock — not UTC (which can be a full day ahead for US users at night).
   const todayStr = localDateStr(user.timezone);
-  const yesterdayStr = localYesterdayStr(user.timezone);
-
   if (user.lastActiveDate === todayStr) {
     return res.status(400).json({ error: "You already logged today — no freeze needed" });
   }
 
-  // Backdate lastActiveDate to yesterday so the next action extends the streak
-  const yesterday = new Date(Date.now() - 86400000);
+  // DST-safe: derive yesterday from the local calendar date, not by subtracting ms.
+  const yesterdayStr = localYesterdayStr(user.timezone);
 
-  // Insert a streak_freeze record (tracks usage + shows in Evidence Vault)
-  yesterday.setHours(12, 0, 0, 0);
+  // Insert a streak_freeze record (tracks usage + shows in Evidence Vault).
+  // completedAt uses noon UTC yesterday — close enough for display purposes;
+  // streak logic only cares about the date string.
+  const yesterdayNoon = new Date(Date.now() - 86400000);
+  yesterdayNoon.setUTCHours(12, 0, 0, 0);
   await db.insert(actionsTable).values({
     userId: user.id,
     type: "streak_freeze",
-    completedAt: yesterday,
+    completedAt: yesterdayNoon,
   });
 
   // Patch user so next action today sees lastActiveDate = yesterday → streak extends

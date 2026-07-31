@@ -4,6 +4,7 @@ import { eq, sql, count, sum } from "drizzle-orm";
 import { requireAuthWithUser } from "../lib/auth";
 import { getActionImpact, clampScore, calcOverallScore, type ActionType } from "../lib/scores";
 import { localDateStr, localYesterdayStr, pgTimezone } from "../lib/dateUtils";
+import { localDateStr, localYesterdayStr } from "../lib/dateUtils";
 
 const router = Router();
 
@@ -13,12 +14,9 @@ router.get("/", requireAuthWithUser, async (req, res) => {
   const limit = Number(req.query.limit) || 50;
   const date = req.query.date as string;
 
-  let query = db.select().from(actionsTable).where(eq(actionsTable.userId, user.id));
   const actions = await db.select().from(actionsTable).where(
-    date
-      ? sql`${actionsTable.userId} = ${user.id} AND DATE(${actionsTable.completedAt}) = ${date}`
-      : eq(actionsTable.userId, user.id)
-  ).limit(limit).orderBy(sql`${actionsTable.completedAt} DESC`);
+    sql`${actionsTable.userId} = ${user.id} AND DATE(${actionsTable.completedAt} AT TIME ZONE ${tz}) = ${todayStr}`
+  );
 
   res.json(actions.map(a => ({ ...a, completedAt: a.completedAt.toISOString() })));
 });
@@ -93,12 +91,12 @@ router.post("/", requireAuthWithUser, async (req, res) => {
     }
   }
 
-  // Update streak — use the user's local timezone so midnight is correct for their clock,
-  // not UTC (which would break streaks for US users logging after ~5–7 PM local time).
+  // Update streak — use the user's local timezone so midnight actions are
+  // credited to the correct local day, not the UTC day.
   const todayStr = localDateStr(user.timezone);
   if (user.lastActiveDate !== todayStr) {
-    const yesterday = localYesterdayStr(user.timezone);
-    const newStreak = user.lastActiveDate === yesterday ? user.streakDays + 1 : 1;
+    const yesterdayStr = localYesterdayStr(user.timezone);
+    const newStreak = user.lastActiveDate === yesterdayStr ? user.streakDays + 1 : 1;
     await db.update(usersTable).set({ streakDays: newStreak, lastActiveDate: todayStr, updatedAt: new Date() })
       .where(eq(usersTable.id, user.id));
   }

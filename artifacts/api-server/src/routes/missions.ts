@@ -4,6 +4,7 @@ import { eq, sql, count } from "drizzle-orm";
 import { requireAuthWithUser } from "../lib/auth";
 import { generateDailyMissions } from "../lib/ai";
 import { getActionImpact, clampScore, calcOverallScore } from "../lib/scores";
+import { localDateStr, localYesterdayStr } from "../lib/dateUtils";
 
 const router = Router();
 
@@ -144,13 +145,15 @@ router.post("/complete", requireAuthWithUser, async (req, res) => {
     }
   }
 
-  // 5. Protect the streak — update lastActiveDate and streakDays if needed
-  if (user.lastActiveDate !== todayStr) {
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-    const newStreak = user.lastActiveDate === yesterday ? user.streakDays + 1 : 1;
+  // 5. Protect the streak — use the user's local timezone so midnight actions
+  //    are credited to the correct local day, not the UTC day.
+  const localToday = localDateStr(user.timezone);
+  if (user.lastActiveDate !== localToday) {
+    const yesterdayStr = localYesterdayStr(user.timezone);
+    const newStreak = user.lastActiveDate === yesterdayStr ? user.streakDays + 1 : 1;
     await db.update(usersTable).set({
       streakDays: newStreak,
-      lastActiveDate: todayStr,
+      lastActiveDate: localToday,
       updatedAt: new Date(),
     }).where(eq(usersTable.id, user.id));
   }

@@ -2,35 +2,57 @@
  * Timezone-aware date utilities.
  *
  * All functions accept an IANA timezone string (e.g. "America/New_York").
- * When timezone is null/undefined they fall back to "America/New_York" so
- * existing users without a stored timezone get reasonable behavior rather
- * than UTC dates that could mis-fire their streak at midnight ET.
+ * localDateStr / localYesterdayStr fall back to UTC for users without a stored
+ * timezone, preserving the original behaviour for accounts created before
+ * timezone capture was added.  localHour and pgTimezone fall back to
+ * "America/New_York" (push-notification default).
  */
 
 const DEFAULT_TZ = "America/New_York";
 
-/** Today's date in the user's local timezone as a YYYY-MM-DD string. */
-export function localDateStr(timezone: string | null | undefined): string {
-  const tz = timezone || DEFAULT_TZ;
+/**
+ * Return the date string (YYYY-MM-DD) for the given date (defaults to now)
+ * in the user's local timezone.
+ *
+ * Falls back to UTC for users without a stored timezone, preserving the
+ * existing behaviour for accounts created before timezone capture was added.
+ */
+export function localDateStr(
+  timezone: string | null | undefined,
+  date?: Date,
+): string {
+  const d = date ?? new Date();
+  if (!timezone) {
+    // No timezone stored — keep original UTC behaviour
+    return d.toISOString().split("T")[0];
+  }
   try {
-    // "en-CA" locale reliably formats as YYYY-MM-DD
-    return new Date().toLocaleDateString("en-CA", { timeZone: tz });
+    // en-CA locale always returns YYYY-MM-DD
+    return d.toLocaleDateString("en-CA", { timeZone: timezone });
   } catch {
-    return new Date().toISOString().split("T")[0];
+    // Unknown / invalid timezone string — fall back to UTC
+    return d.toISOString().split("T")[0];
   }
 }
 
-/** Yesterday's date in the user's local timezone as a YYYY-MM-DD string. */
+/**
+ * Return the *previous* calendar date string (YYYY-MM-DD) in the user's
+ * local timezone.
+ *
+ * DST-safe: we derive yesterday purely from the local calendar date string
+ * (not by subtracting 86,400,000 ms), so spring-forward 23-hour days never
+ * accidentally skip two calendar days.
+ */
 export function localYesterdayStr(timezone: string | null | undefined): string {
-  const tz = timezone || DEFAULT_TZ;
-  try {
-    return new Date(Date.now() - 86_400_000).toLocaleDateString("en-CA", { timeZone: tz });
-  } catch {
-    return new Date(Date.now() - 86_400_000).toISOString().split("T")[0];
-  }
+  const todayStr = localDateStr(timezone);
+  const [year, month, day] = todayStr.split("-").map(Number);
+  // Use UTC arithmetic on the parsed components to avoid server-locale DST effects
+  const prev = new Date(Date.UTC(year, month - 1, day - 1));
+  return prev.toISOString().split("T")[0];
 }
 
-/** Current hour (0-23) in the user's local timezone. */
+/** Return the user's current local hour (0-23) given an IANA timezone string.
+ *  Falls back to "America/New_York" for existing users without a stored timezone. */
 export function localHour(timezone: string | null | undefined): number {
   const tz = timezone || DEFAULT_TZ;
   try {
@@ -39,6 +61,7 @@ export function localHour(timezone: string | null | undefined): number {
       10,
     );
   } catch {
+    // Unknown timezone string — fall back to UTC
     return new Date().getUTCHours();
   }
 }
