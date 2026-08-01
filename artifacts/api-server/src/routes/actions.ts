@@ -4,7 +4,6 @@ import { eq, sql, count, sum } from "drizzle-orm";
 import { requireAuthWithUser } from "../lib/auth";
 import { getActionImpact, clampScore, calcOverallScore, type ActionType } from "../lib/scores";
 import { localDateStr, localYesterdayStr, pgTimezone } from "../lib/dateUtils";
-import { localDateStr, localYesterdayStr } from "../lib/dateUtils";
 
 const router = Router();
 
@@ -14,9 +13,16 @@ router.get("/", requireAuthWithUser, async (req, res) => {
   const limit = Number(req.query.limit) || 50;
   const date = req.query.date as string;
 
-  const actions = await db.select().from(actionsTable).where(
-    sql`${actionsTable.userId} = ${user.id} AND DATE(${actionsTable.completedAt} AT TIME ZONE ${tz}) = ${todayStr}`
-  );
+  let whereClause;
+  if (date) {
+    // Filter by the given date string in the user's local timezone
+    const tz = pgTimezone(user.timezone);
+    whereClause = sql`${actionsTable.userId} = ${user.id} AND DATE(${actionsTable.completedAt} AT TIME ZONE ${tz}) = ${date}`;
+  } else {
+    whereClause = sql`${actionsTable.userId} = ${user.id}`;
+  }
+
+  const actions = await db.select().from(actionsTable).where(whereClause).limit(limit);
 
   res.json(actions.map(a => ({ ...a, completedAt: a.completedAt.toISOString() })));
 });
