@@ -2,8 +2,30 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./lib/stripeClient";
+import { pool } from "@workspace/db";
 import cron from "node-cron";
 import { sendDailyReminders, preGenerateTomorrowMissions } from "./routes/push";
+
+// ─── Application schema migrations ────────────────────────────────────────────
+// Ensures tables added after the initial deploy exist before the server starts.
+// Uses CREATE TABLE IF NOT EXISTS so it is safe to run on every startup.
+async function runAppMigrations() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS push_tokens (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token      TEXT    NOT NULL UNIQUE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    logger.info("App schema migrations applied (push_tokens)");
+  } catch (err) {
+    logger.error({ err }, "App schema migration failed");
+    throw err;
+  }
+}
 
 async function initStripe() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -43,6 +65,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
+await runAppMigrations();
 await initStripe();
 
 // ─── Hourly jobs ──────────────────────────────────────────────────────────────

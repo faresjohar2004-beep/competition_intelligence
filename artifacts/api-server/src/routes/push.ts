@@ -1,11 +1,14 @@
 import { Router } from "express";
 import webpush from "web-push";
-import { db, pushSubscriptionsTable, usersTable, actionsTable, missionsTable } from "@workspace/db";
+import { Expo, type ExpoPushMessage } from "expo-server-sdk";
+import { db, pushSubscriptionsTable, pushTokensTable, usersTable, actionsTable, missionsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { requireAuthWithUser } from "../lib/auth";
 import { logger } from "../lib/logger";
 import { generateDailyMissions } from "../lib/ai";
 import { localHour, localDateStr } from "../lib/dateUtils";
+
+const expo = new Expo();
 
 const router = Router();
 
@@ -52,9 +55,17 @@ router.delete("/unsubscribe", requireAuthWithUser, async (req, res) => {
 // ─── Cron-callable: send 7pm LOCAL-TIME reminders ────────────────────────────
 // Called every hour. Each run only sends to users whose local clock reads 7PM
 // and who haven't logged an action yet today (in their local timezone).
+// Sends both web-push (VAPID) and Expo push (mobile) notifications.
 export async function sendDailyReminders() {
+  await Promise.all([
+    sendWebPushReminders(),
+    sendExpoPushReminders(),
+  ]);
+}
+
+async function sendWebPushReminders() {
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-    logger.warn("VAPID keys not configured — skipping push reminders");
+    logger.warn("VAPID keys not configured — skipping web push reminders");
     return;
   }
 
@@ -79,7 +90,7 @@ export async function sendDailyReminders() {
     return hour === 19 && s.lastActiveDate !== todayLocal;
   });
 
-  logger.info({ total: subs.length, sending: targets.length }, "Timezone-aware push: 7pm local cohort");
+  logger.info({ total: subs.length, sending: targets.length }, "Timezone-aware web push: 7pm local cohort");
 
   for (const sub of targets) {
     const firstName = sub.name?.split(" ")[0] ?? "Hey";
@@ -106,8 +117,76 @@ export async function sendDailyReminders() {
           .delete(pushSubscriptionsTable)
           .where(eq(pushSubscriptionsTable.endpoint, sub.endpoint));
       } else {
-        logger.error({ err, endpoint: sub.endpoint }, "Push send failed");
+        logger.error({ err, endpoint: sub.endpoint }, "Web push send failed");
       }
+    }
+  }
+}
+
+async function sendExpoPushReminders() {
+  const tokens = await db
+    .select({
+      userId: pushTokensTable.userId,
+      token: pushTokensTable.token,
+      streakDays: usersTable.streakDays,
+      lastActiveDate: usersTable.lastActiveDate,
+      name: usersTable.name,
+      timezone: usersTable.timezone,
+    })
+    .from(pushTokensTable)
+    .innerJoin(usersTable, eq(pushTokensTable.userId, usersTable.id));
+
+  // Only send to users whose local time is 7PM (hour 19) and who haven't logged today
+  const targets = tokens.filter((t) => {
+    const hour = localHour(t.timezone);
+    const todayLocal = localDateStr(t.timezone);
+    return hour === 19 && t.lastActiveDate !== todayLocal;
+  });
+
+  logger.info({ total: tokens.length, sending: targets.length }, "Timezone-aware Expo push: 7pm local cohort");
+
+  if (targets.length === 0) return;
+
+  const messages: ExpoPushMessage[] = targets
+    .filter((t) => Expo.isExpoPushToken(t.token))
+    .map((t) => {
+      const firstName = t.name?.split(" ")[0] ?? "Hey";
+      const streakLine =
+        t.streakDays > 0
+          ? `Your ${t.streakDays}-day streak ends at midnight.`
+          : "Today is a great day to start your streak.";
+
+      return {
+        to: t.token,
+        sound: "default" as const,
+        title: `${firstName} — one action left today`,
+        body: streakLine,
+        data: { url: "/dashboard" },
+      };
+    });
+
+  const chunks = expo.chunkPushNotifications(messages);
+
+  for (const chunk of chunks) {
+    try {
+      const receipts = await expo.sendPushNotificationsAsync(chunk);
+
+      for (let i = 0; i < receipts.length; i++) {
+        const receipt = receipts[i];
+        if (receipt.status === "error") {
+          const token = chunk[i].to as string;
+          logger.warn({ token, details: receipt.details }, "Expo push receipt error");
+
+          // DeviceNotRegistered means the token is stale — remove it
+          if (receipt.details?.error === "DeviceNotRegistered") {
+            await db
+              .delete(pushTokensTable)
+              .where(eq(pushTokensTable.token, token));
+          }
+        }
+      }
+    } catch (err) {
+      logger.error({ err }, "Expo push chunk send failed");
     }
   }
 }

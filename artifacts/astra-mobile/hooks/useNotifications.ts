@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { customFetch } from '@workspace/api-client-react';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -37,16 +38,22 @@ async function registerForNotifications() {
       return;
     }
 
-    // Get the Expo push token — this is for future native push integration.
-    // The token can be sent to the server to enable Expo Push Notifications.
+    // Get the Expo push token and register it with the server
     const tokenData = await Notifications.getExpoPushTokenAsync({
       projectId: process.env.EXPO_PUBLIC_REPL_ID ?? undefined,
     }).catch(() => null);
 
-    if (tokenData) {
-      // Token is available for native push notification support.
-      // Future: POST to /api/push/expo-token to register with server.
-      console.log('[Notifications] Expo push token obtained');
+    if (tokenData?.data) {
+      try {
+        await customFetch('/api/push-tokens', {
+          method: 'POST',
+          body: JSON.stringify({ token: tokenData.data }),
+        });
+        console.log('[Notifications] Expo push token registered with server');
+      } catch (err) {
+        // Token registration is non-critical — log and continue
+        console.log('[Notifications] Failed to register token:', err);
+      }
     }
 
     // Set up notification channel for Android
