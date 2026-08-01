@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
-import { useLogAction, useGetTodayActions, getGetTodayActionsQueryKey } from '@workspace/api-client-react';
+import { useLogAction, useGetTodayActions, getGetTodayActionsQueryKey, useGetMe, useUpdateMe, getGetMeQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -31,6 +31,20 @@ const ACTIONS: Array<{
   { type: 'sleep',            label: 'Sleep',          color: '#0EA5E9', icon: 'moon-outline',         identity: 'You are someone who plays the long game.',                   impact: '+1.5% Health' },
   { type: 'water',            label: 'Water',          color: '#06B6D4', icon: 'water-outline',        identity: 'You are someone who takes care of their body.',              impact: '+1% Health' },
 ];
+
+// ─── Tomorrow's promise suggestions, keyed by action type ────────────────────
+const PROMISE_SUGGESTIONS: Record<string, string[]> = {
+  workout:          ['I will work out again',         'I will train for 30 minutes',       'I will move my body'],
+  deep_work:        ['I will do 90 min of deep work', 'I will focus without distraction',  'I will make real progress on my work'],
+  learning:         ['I will study for an hour',      'I will learn something new',        'I will invest in my education'],
+  content_creation: ['I will create and ship',        'I will put my work into the world', 'I will build something today'],
+  saving:           ['I will make a wealth decision',  'I will track my spending',          'I will save money'],
+  reading:          ['I will read for 30 minutes',    'I will finish a chapter',           'I will read before bed'],
+  meditation:       ['I will meditate',               'I will find 10 minutes of calm',   'I will clear my mind'],
+  sleep:            ['I will sleep by 10pm',          'I will protect my sleep',           'I will prioritize rest'],
+  water:            ['I will drink 8 glasses',        'I will stay hydrated all day',      'I will take care of my body'],
+};
+const DEFAULT_SUGGESTIONS = ['I will show up again', 'I will do the work', 'I will keep the streak alive'];
 
 function ActionCard({
   action,
@@ -88,8 +102,12 @@ export default function ActionsScreen() {
   const [selected, setSelected] = useState<typeof ACTIONS[0] | null>(null);
   const [notes, setNotes] = useState('');
   const [successType, setSuccessType] = useState<string | null>(null);
+  const [promise, setPromise] = useState('');
+  const [promiseSealed, setPromiseSealed] = useState(false);
 
   const { data: todayData, refetch } = useGetTodayActions();
+  const { data: me } = useGetMe();
+  const updateMe = useUpdateMe();
   const logAction = useLogAction({
     mutation: {
       onSuccess: () => {
@@ -99,12 +117,34 @@ export default function ActionsScreen() {
   });
 
   const loggedTypes = new Set(todayData?.actions?.map(a => a.type) ?? []);
+  const tomorrowPromise = (me as any)?.tomorrowPromise as string | null | undefined;
+  // Show input when ≥1 action logged and no promise set yet this session or from server
+  const showPromiseCard = loggedTypes.size > 0 && !promiseSealed && !tomorrowPromise;
+  // Show sealed confirmation when promise is set (either just now or from a previous session)
+  const showSealedState = loggedTypes.size > 0 && (promiseSealed || !!tomorrowPromise);
+  const sealedText = promiseSealed ? promise : (tomorrowPromise ?? '');
+  const lastLoggedType = [...loggedTypes].reverse()[0] ?? 'deep_work';
+  const suggestions = PROMISE_SUGGESTIONS[lastLoggedType] ?? DEFAULT_SUGGESTIONS;
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refetch();
     setRefreshing(false);
   }, [refetch]);
+
+  const handleSealPromise = () => {
+    const trimmed = promise.trim();
+    if (!trimmed) return;
+    updateMe.mutate({ data: { tomorrowPromise: trimmed } } as any, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+        setPromiseSealed(true);
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      },
+    });
+  };
 
   const handleSelect = (action: typeof ACTIONS[0]) => {
     setSelected(action);
@@ -177,6 +217,68 @@ export default function ActionsScreen() {
             {loggedTypes.size} of {ACTIONS.length} actions logged today
           </Text>
         </View>
+
+        {/* ── Tomorrow's Promise card ───────────────────────────────── */}
+        {showPromiseCard && (
+          <Animated.View entering={FadeInDown.duration(400).delay(100)} style={styles.promiseOuter}>
+            <View style={styles.promiseOrb} />
+            <View style={styles.promiseHeader}>
+              <Ionicons name="moon-outline" size={13} color={colors.primary} style={{ marginRight: 6 }} />
+              <Text style={styles.promiseHeaderText}>Before You Close Tonight</Text>
+            </View>
+            <Text style={styles.promiseQuestion}>What will you do tomorrow?</Text>
+
+            {/* Suggestion chips */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={{ gap: 8, paddingRight: 4 }}>
+              {suggestions.map(s => (
+                <TouchableOpacity
+                  key={s}
+                  onPress={() => setPromise(s)}
+                  style={[styles.chip, promise === s && { backgroundColor: `${colors.primary}20`, borderColor: `${colors.primary}50` }]}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.chipText, promise === s && { color: colors.primary }]}>{s}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Free-text input */}
+            <TextInput
+              style={styles.promiseInput}
+              value={promise}
+              onChangeText={setPromise}
+              placeholder="Or write your own..."
+              placeholderTextColor={colors.mutedForeground}
+              maxLength={120}
+              returnKeyType="done"
+              onSubmitEditing={handleSealPromise}
+            />
+
+            {/* Seal button */}
+            <TouchableOpacity
+              style={[styles.sealBtn, { backgroundColor: promise.trim() ? colors.primary : colors.secondary }, (updateMe.isPending || !promise.trim()) && styles.sealBtnDisabled]}
+              onPress={handleSealPromise}
+              disabled={!promise.trim() || updateMe.isPending}
+              activeOpacity={0.82}
+            >
+              {updateMe.isPending
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={styles.sealBtnText}>Seal it →</Text>
+              }
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
+        {/* Sealed confirmation */}
+        {showSealedState && (
+          <Animated.View entering={FadeInDown.duration(350)} style={styles.sealedCard}>
+            <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sealedLabel}>Tomorrow's Promise</Text>
+              <Text style={styles.sealedText} numberOfLines={2}>"{sealedText}"</Text>
+            </View>
+          </Animated.View>
+        )}
       </ScrollView>
 
       {/* Log action modal */}
@@ -359,6 +461,118 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       fontWeight: '700' as const,
       color: '#FFFFFF',
       fontFamily: 'Inter_700Bold',
+    },
+
+    // ── Tomorrow's promise ───────────────────────────────────────────
+    promiseOuter: {
+      backgroundColor: colors.card,
+      borderRadius: colors.radius,
+      borderWidth: 1,
+      borderColor: `${colors.primary}30`,
+      padding: 20,
+      marginTop: 24,
+      overflow: 'hidden',
+    },
+    promiseOrb: {
+      position: 'absolute' as const,
+      top: -30,
+      right: -30,
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: colors.primary,
+      opacity: 0.06,
+    },
+    promiseHeader: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      marginBottom: 6,
+    },
+    promiseHeaderText: {
+      fontSize: 10,
+      fontWeight: '700' as const,
+      color: `${colors.primary}90`,
+      letterSpacing: 1.2,
+      textTransform: 'uppercase' as const,
+      fontFamily: 'Inter_700Bold',
+    },
+    promiseQuestion: {
+      fontSize: 18,
+      fontWeight: '800' as const,
+      color: colors.foreground,
+      fontFamily: 'Inter_700Bold',
+      marginBottom: 14,
+      lineHeight: 24,
+    },
+    chipsScroll: {
+      marginBottom: 14,
+    },
+    chip: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 99,
+      backgroundColor: colors.secondary,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    chipText: {
+      fontSize: 13,
+      color: colors.mutedForeground,
+      fontFamily: 'Inter_500Medium',
+    },
+    promiseInput: {
+      backgroundColor: colors.secondary,
+      borderRadius: colors.radius - 2,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 12,
+      color: colors.foreground,
+      fontSize: 14,
+      fontFamily: 'Inter_400Regular',
+      marginBottom: 14,
+    },
+    sealBtn: {
+      borderRadius: colors.radius,
+      paddingVertical: 14,
+      alignItems: 'center' as const,
+    },
+    sealBtnDisabled: {
+      opacity: 0.45,
+    },
+    sealBtnText: {
+      fontSize: 15,
+      fontWeight: '700' as const,
+      color: '#FFFFFF',
+      fontFamily: 'Inter_700Bold',
+    },
+
+    // ── Sealed confirmation ──────────────────────────────────────────
+    sealedCard: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: 12,
+      backgroundColor: `${colors.primary}10`,
+      borderRadius: colors.radius,
+      borderWidth: 1,
+      borderColor: `${colors.primary}30`,
+      padding: 16,
+      marginTop: 24,
+    },
+    sealedLabel: {
+      fontSize: 10,
+      fontWeight: '700' as const,
+      color: `${colors.primary}80`,
+      letterSpacing: 1,
+      textTransform: 'uppercase' as const,
+      fontFamily: 'Inter_700Bold',
+      marginBottom: 3,
+    },
+    sealedText: {
+      fontSize: 13,
+      color: colors.primary,
+      fontFamily: 'Inter_500Medium',
+      lineHeight: 19,
+      fontStyle: 'italic' as const,
     },
   });
 }

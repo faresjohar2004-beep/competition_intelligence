@@ -77,6 +77,7 @@ export default function DashboardScreen() {
   const actionsToday = todayData?.actions?.length ?? 0;
   const todayList = todayData?.actions ?? [];
   const promiseKept = todayList.some(a => (a.type as string) === 'promise');
+  const tomorrowPromise = (me as any)?.tomorrowPromise as string | null | undefined;
 
   const streakInfo = getStreakWord(streak);
   const now = new Date();
@@ -128,6 +129,19 @@ export default function DashboardScreen() {
           colors={colors}
         />
       </Animated.View>
+
+      {/* Yesterday's promise — morning accountability hook */}
+      {!!tomorrowPromise && actionsToday === 0 && (
+        <Animated.View entering={FadeInDown.duration(400).delay(120)} style={styles.yesterdayCard}>
+          <View style={styles.yesterdayOrb} />
+          <View style={styles.yesterdayRow}>
+            <Ionicons name="sparkles" size={11} color={colors.primary} style={{ marginRight: 5 }} />
+            <Text style={styles.yesterdayTag}>Yesterday's Promise</Text>
+          </View>
+          <Text style={styles.yesterdayText}>"{tomorrowPromise}"</Text>
+          <Text style={styles.yesterdayHook}>You committed to this. Deliver today.</Text>
+        </Animated.View>
+      )}
 
       {/* Daily briefing card */}
       <Animated.View entering={FadeInDown.duration(400).delay(140)} style={styles.briefingCard}>
@@ -473,6 +487,55 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       fontSize: 11,
       color: colors.mutedForeground,
       fontFamily: 'Inter_400Regular',
+    },
+
+    // ── Yesterday's promise accountability card ──────────────────────
+    yesterdayCard: {
+      backgroundColor: `${colors.primary}0C`,
+      borderRadius: colors.radius,
+      borderWidth: 1,
+      borderColor: `${colors.primary}35`,
+      padding: 18,
+      marginBottom: 16,
+      overflow: 'hidden' as const,
+    },
+    yesterdayOrb: {
+      position: 'absolute' as const,
+      top: -24,
+      right: -24,
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.primary,
+      opacity: 0.08,
+    },
+    yesterdayRow: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      marginBottom: 8,
+    },
+    yesterdayTag: {
+      fontSize: 10,
+      fontWeight: '700' as const,
+      color: `${colors.primary}90`,
+      letterSpacing: 1.2,
+      textTransform: 'uppercase' as const,
+      fontFamily: 'Inter_700Bold',
+    },
+    yesterdayText: {
+      fontSize: 16,
+      fontWeight: '700' as const,
+      color: colors.foreground,
+      fontFamily: 'Inter_700Bold',
+      lineHeight: 23,
+      marginBottom: 8,
+      fontStyle: 'italic' as const,
+    },
+    yesterdayHook: {
+      fontSize: 12,
+      color: `${colors.primary}80`,
+      fontFamily: 'Inter_500Medium',
+      fontWeight: '600' as const,
     },
   });
 }
