@@ -44,7 +44,7 @@ router.patch("/me", requireAuthWithUser, async (req, res) => {
 // POST /api/users/onboard
 router.post("/onboard", requireAuth, async (req, res) => {
   const clerkId = (req as any).clerkId;
-  const { name, email, avatarUrl, age, gender, height, weight, fitnessLevel, incomeRange, career, mainGoals, biggestStruggles, dailyHabits } = req.body;
+  const { name, email, avatarUrl, age, gender, height, weight, fitnessLevel, incomeRange, career, mainGoals, biggestStruggles, dailyHabits, timezone } = req.body;
 
   // Upsert user
   let user;
@@ -53,12 +53,14 @@ router.post("/onboard", requireAuth, async (req, res) => {
     const [updated] = await db.update(usersTable).set({
       name, email: email || existing.email, avatarUrl, age, gender, height, weight, fitnessLevel, incomeRange,
       career, mainGoals, biggestStruggles, dailyHabits, onboarded: true, updatedAt: new Date(),
+      ...(timezone && { timezone }),
     }).where(eq(usersTable.id, existing.id)).returning();
     user = updated;
   } else {
     const [created] = await db.insert(usersTable).values({
       clerkId, name, email: email || `${clerkId}@astra.app`, avatarUrl, age, gender, height, weight,
       fitnessLevel, incomeRange, career, mainGoals, biggestStruggles, dailyHabits, onboarded: true,
+      ...(timezone && { timezone }),
     }).returning();
     user = created;
   }

@@ -447,6 +447,7 @@ export default function Onboarding() {
                           : "Reading, working out, meditation, deep work",
           currentIdentity:  `I am becoming someone who ${AREA_IDENTITY?.[a] ?? "shows up every day and keeps their promises"}.`,
           desiredIdentity:  AREA_GOALS?.[a] ?? "Grow and improve every area of my life",
+          timezone:         Intl.DateTimeFormat().resolvedOptions().timeZone,
         },
       },
       {
