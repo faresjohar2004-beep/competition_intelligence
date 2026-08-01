@@ -28,6 +28,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: 'sparkles', selected: 'sparkles' }} />
         <Label>Coach</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="profile">
+        <Icon sf={{ default: 'person.circle', selected: 'person.circle.fill' }} />
+        <Label>Profile</Label>
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
@@ -113,6 +117,18 @@ function ClassicTabLayout() {
               <SymbolView name="sparkles" tintColor={color} size={22} />
             ) : (
               <Ionicons name="sparkles-outline" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="person.circle.fill" tintColor={color} size={22} />
+            ) : (
+              <Ionicons name="person-circle-outline" size={22} color={color} />
             ),
         }}
       />
