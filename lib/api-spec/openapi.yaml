@@ -9,6 +9,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: missions
+    description: Daily AI-generated missions
   - name: users
     description: User profile and onboarding
   - name: future-self
@@ -357,6 +359,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BiographyEntry"
+
+  # ─── MISSIONS ───────────────────────────────────────────────────────────────
+  /missions:
+    get:
+      operationId: getMissions
+      tags: [missions]
+      summary: Get today's missions (generates if not yet created)
+      responses:
+        "200":
+          description: Today's missions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Missions"
+
+  /missions/complete:
+    post:
+      operationId: completeMission
+      tags: [missions]
+      summary: Mark a mission slot as complete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteMissionInput"
+      responses:
+        "200":
+          description: Updated missions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Missions"
 
   # ─── AI COACHING ────────────────────────────────────────────────────────────
   /coaching/messages:
@@ -1029,3 +1064,42 @@ components:
           type: integer
         userCount:
           type: integer
+
+    Missions:
+      type: object
+      required: [id, userId, date]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        date:
+          type: string
+        criticalMission:
+          type: ["string", "null"]
+        secondaryMission1:
+          type: ["string", "null"]
+        secondaryMission2:
+          type: ["string", "null"]
+        secondaryMission3:
+          type: ["string", "null"]
+        courageChallenge:
+          type: ["string", "null"]
+        criticalCompleted:
+          type: boolean
+        secondary1Completed:
+          type: boolean
+        secondary2Completed:
+          type: boolean
+        secondary3Completed:
+          type: boolean
+        courageCompleted:
+          type: boolean
+
+    CompleteMissionInput:
+      type: object
+      required: [slot]
+      properties:
+        slot:
+          type: string
+          enum: [critical, secondary1, secondary2, secondary3, courage]

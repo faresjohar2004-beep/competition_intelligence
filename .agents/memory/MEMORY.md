@@ -12,3 +12,4 @@
 - [Timezone-aware streak dates](astra-tz-streak.md) — streak and "today" logic must use localDateStr(user.timezone) not toISOString(); shared util at api-server/src/lib/dateUtils.ts; GET /today uses AT TIME ZONE in SQL
 - [Silent mutation failures](astra-silent-mutation-failures.md) — ASTRA had a global Toaster mounted but zero onError handlers on core-loop mutations; silent failures on streak/promise actions are a high-risk churn cause worth auditing for in any habit app
 - [Dashboard information hierarchy](astra-dashboard-hierarchy.md) — flat stacking of 15+ equal-weight sections blurs daily-ritual vs optional-exploration content; a labeled divider between them is a cheap declutter fix
+- [Expo mobile setup quirks](expo-mobile-setup.md) — babel/core version pinning, expo-auth-session peer dep, project-reference dist rebuild required for new api-client exports

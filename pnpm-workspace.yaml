@@ -160,7 +160,7 @@ overrides:
   esbuild: "^0.28.1"
   # Security vulnerability overrides for transitive dependencies
   body-parser: ">=2.3.0"
-  "@babel/core": ">=7.29.6"
+  "@babel/core": "^7.29.6"
   qs: ">=6.15.3"
   postcss: ">=8.5.15"
   js-yaml: ">=4.3.0"

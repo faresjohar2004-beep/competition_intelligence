@@ -69,6 +69,33 @@ router.post("/complete", requireAuthWithUser, async (req, res) => {
     return;
   }
 
+  // Read the current missions row to check idempotency before any side-effects.
+  // This must happen BEFORE the UPDATE so we know whether to apply side-effects.
+  const [existing] = await db
+    .select()
+    .from(missionsTable)
+    .where(sql`${missionsTable.userId} = ${user.id} AND ${missionsTable.date} = ${todayStr}`);
+
+  if (!existing) {
+    res.status(404).json({ error: "No missions found for today" });
+    return;
+  }
+
+  // Map slot → the boolean field that records its completion.
+  const alreadyCompleted =
+    slot === "critical"   ? existing.criticalCompleted   :
+    slot === "secondary1" ? existing.secondary1Completed :
+    slot === "secondary2" ? existing.secondary2Completed :
+    slot === "secondary3" ? existing.secondary3Completed :
+    slot === "courage"    ? existing.courageCompleted     : false;
+
+  // Idempotency guard: if the slot is already completed, return the current row
+  // without re-applying score / streak / action side-effects.
+  if (alreadyCompleted) {
+    res.json(existing);
+    return;
+  }
+
   // 1. Mark the mission slot complete
   const [updated] = await db
     .update(missionsTable)
