@@ -130,16 +130,28 @@ export default function DashboardScreen() {
         />
       </Animated.View>
 
-      {/* Yesterday's promise — morning accountability hook */}
-      {!!tomorrowPromise && actionsToday === 0 && (
-        <Animated.View entering={FadeInDown.duration(400).delay(120)} style={styles.yesterdayCard}>
-          <View style={styles.yesterdayOrb} />
+      {/* Yesterday's promise — accountability hook (pending) or kept confirmation */}
+      {!!tomorrowPromise && (
+        <Animated.View
+          entering={FadeInDown.duration(400).delay(120)}
+          style={actionsToday > 0 ? styles.yesterdayCardKept : styles.yesterdayCard}
+        >
+          <View style={actionsToday > 0 ? styles.yesterdayOrbKept : styles.yesterdayOrb} />
           <View style={styles.yesterdayRow}>
-            <Ionicons name="sparkles" size={11} color={colors.primary} style={{ marginRight: 5 }} />
-            <Text style={styles.yesterdayTag}>Yesterday's Promise</Text>
+            <Ionicons
+              name={actionsToday > 0 ? 'checkmark-circle' : 'sparkles'}
+              size={11}
+              color={actionsToday > 0 ? '#10B981' : colors.primary}
+              style={{ marginRight: 5 }}
+            />
+            <Text style={actionsToday > 0 ? styles.yesterdayTagKept : styles.yesterdayTag}>
+              {actionsToday > 0 ? 'Promise Kept' : "Yesterday's Promise"}
+            </Text>
           </View>
           <Text style={styles.yesterdayText}>"{tomorrowPromise}"</Text>
-          <Text style={styles.yesterdayHook}>You committed to this. Deliver today.</Text>
+          <Text style={actionsToday > 0 ? styles.yesterdayHookKept : styles.yesterdayHook}>
+            {actionsToday > 0 ? 'You said you would. You did.' : 'You committed to this. Deliver today.'}
+          </Text>
         </Animated.View>
       )}
 
@@ -499,6 +511,15 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       marginBottom: 16,
       overflow: 'hidden' as const,
     },
+    yesterdayCardKept: {
+      backgroundColor: '#10B98110',
+      borderRadius: colors.radius,
+      borderWidth: 1,
+      borderColor: '#10B98135',
+      padding: 18,
+      marginBottom: 16,
+      overflow: 'hidden' as const,
+    },
     yesterdayOrb: {
       position: 'absolute' as const,
       top: -24,
@@ -507,6 +528,16 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       height: 80,
       borderRadius: 40,
       backgroundColor: colors.primary,
+      opacity: 0.08,
+    },
+    yesterdayOrbKept: {
+      position: 'absolute' as const,
+      top: -24,
+      right: -24,
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: '#10B981',
       opacity: 0.08,
     },
     yesterdayRow: {
@@ -518,6 +549,14 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       fontSize: 10,
       fontWeight: '700' as const,
       color: `${colors.primary}90`,
+      letterSpacing: 1.2,
+      textTransform: 'uppercase' as const,
+      fontFamily: 'Inter_700Bold',
+    },
+    yesterdayTagKept: {
+      fontSize: 10,
+      fontWeight: '700' as const,
+      color: '#10B981CC',
       letterSpacing: 1.2,
       textTransform: 'uppercase' as const,
       fontFamily: 'Inter_700Bold',
@@ -534,6 +573,12 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     yesterdayHook: {
       fontSize: 12,
       color: `${colors.primary}80`,
+      fontFamily: 'Inter_500Medium',
+      fontWeight: '600' as const,
+    },
+    yesterdayHookKept: {
+      fontSize: 12,
+      color: '#10B981AA',
       fontFamily: 'Inter_500Medium',
       fontWeight: '600' as const,
     },

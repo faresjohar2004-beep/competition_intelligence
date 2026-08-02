@@ -102,6 +102,7 @@ export default function ActionsScreen() {
   const [selected, setSelected] = useState<typeof ACTIONS[0] | null>(null);
   const [notes, setNotes] = useState('');
   const [successType, setSuccessType] = useState<string | null>(null);
+  const [successPromiseKept, setSuccessPromiseKept] = useState(false);
   const [promise, setPromise] = useState('');
   const [promiseSealed, setPromiseSealed] = useState(false);
 
@@ -154,17 +155,28 @@ export default function ActionsScreen() {
   const handleLog = async () => {
     if (!selected) return;
     try {
+      // Detect promise-kept: first action of the day while a tomorrow promise is set
+      const isFirstAction = loggedTypes.size === 0;
+      const isPromiseKept = isFirstAction && !!tomorrowPromise;
+
       if (Platform.OS !== 'web') {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
       await logAction.mutateAsync({ data: { type: selected.type, notes: notes.trim() || undefined } });
       setSuccessType(selected.type);
+      setSuccessPromiseKept(isPromiseKept);
       setSelected(null);
       setNotes('');
       if (Platform.OS !== 'web') {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (isPromiseKept) {
+          // Distinct double-pulse pattern for promise-kept moments
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 180);
+        } else {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
       }
-      setTimeout(() => setSuccessType(null), 2500);
+      setTimeout(() => { setSuccessType(null); setSuccessPromiseKept(false); }, 3000);
     } catch (e) {
       console.error('Log action failed', e);
     }
@@ -190,9 +202,17 @@ export default function ActionsScreen() {
         {successType && (
           <Animated.View entering={FadeInDown.duration(300)} style={styles.successBanner}>
             <Ionicons name="checkmark-circle" size={18} color="#10B981" />
-            <Text style={styles.successText}>
-              {ACTIONS.find(a => a.type === successType)?.identity ?? 'Action logged!'}
-            </Text>
+            <View style={{ flex: 1, gap: 6 }}>
+              <Text style={styles.successText}>
+                {ACTIONS.find(a => a.type === successType)?.identity ?? 'Action logged!'}
+              </Text>
+              {successPromiseKept && (
+                <View style={styles.promiseKeptBadge}>
+                  <Ionicons name="star" size={12} color="#8B5CF6" />
+                  <Text style={styles.promiseKeptText}>Today's Promise — Kept</Text>
+                </View>
+              )}
+            </View>
           </Animated.View>
         )}
 
@@ -557,6 +577,25 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       borderColor: `${colors.primary}30`,
       padding: 16,
       marginTop: 24,
+    },
+    promiseKeptBadge: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: 5,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      backgroundColor: '#8B5CF615',
+      borderRadius: 99,
+      borderWidth: 1,
+      borderColor: '#8B5CF630',
+      alignSelf: 'flex-start' as const,
+    },
+    promiseKeptText: {
+      fontSize: 11,
+      fontWeight: '700' as const,
+      color: '#8B5CF6',
+      fontFamily: 'Inter_700Bold',
+      letterSpacing: 0.3,
     },
     sealedLabel: {
       fontSize: 10,
