@@ -65,6 +65,8 @@ export interface OnboardingInput {
   mainGoals?: string;
   biggestStruggles?: string;
   dailyHabits?: string;
+  /** IANA timezone string (e.g. "America/New_York") */
+  timezone?: string;
 }
 
 export interface UserStats {

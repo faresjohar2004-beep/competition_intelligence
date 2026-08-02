@@ -58,6 +58,7 @@ export default function OnboardScreen() {
         career: career.trim(),
         mainGoals: goals.trim(),
         biggestStruggles: struggles.trim(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
       queryClient.invalidateQueries();
       router.replace('/(tabs)');

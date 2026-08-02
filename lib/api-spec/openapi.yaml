@@ -628,6 +628,9 @@ components:
           type: string
         dailyHabits:
           type: string
+        timezone:
+          type: string
+          description: IANA timezone string (e.g. "America/New_York")
 
     UserStats:
       type: object
