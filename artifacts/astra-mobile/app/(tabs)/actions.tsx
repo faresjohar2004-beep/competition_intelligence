@@ -103,6 +103,7 @@ export default function ActionsScreen() {
   const [notes, setNotes] = useState('');
   const [successType, setSuccessType] = useState<string | null>(null);
   const [successPromiseKept, setSuccessPromiseKept] = useState(false);
+  const [successDeltas, setSuccessDeltas] = useState<{ label: string; value: number; color: string }[]>([]);
   const [promise, setPromise] = useState('');
   const [promiseSealed, setPromiseSealed] = useState(false);
 
@@ -162,9 +163,21 @@ export default function ActionsScreen() {
       if (Platform.OS !== 'web') {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
-      await logAction.mutateAsync({ data: { type: selected.type, notes: notes.trim() || undefined } });
+      const result = await logAction.mutateAsync({ data: { type: selected.type, notes: notes.trim() || undefined } });
+      const impact = (result as any)?.scoreImpact as {
+        healthDelta?: number; wealthDelta?: number; disciplineDelta?: number;
+        confidenceDelta?: number; knowledgeDelta?: number;
+      } | undefined;
+      const deltas: { label: string; value: number; color: string }[] = [
+        { label: 'Health',     value: impact?.healthDelta     ?? 0, color: '#10B981' },
+        { label: 'Wealth',     value: impact?.wealthDelta     ?? 0, color: '#F59E0B' },
+        { label: 'Discipline', value: impact?.disciplineDelta ?? 0, color: '#6366F1' },
+        { label: 'Confidence', value: impact?.confidenceDelta ?? 0, color: '#F97316' },
+        { label: 'Knowledge',  value: impact?.knowledgeDelta  ?? 0, color: '#3B82F6' },
+      ].filter(d => d.value > 0);
       setSuccessType(selected.type);
       setSuccessPromiseKept(isPromiseKept);
+      setSuccessDeltas(deltas);
       setSelected(null);
       setNotes('');
       // Clear yesterday's promise on the first action of the day so it doesn't
@@ -185,7 +198,7 @@ export default function ActionsScreen() {
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
       }
-      setTimeout(() => { setSuccessType(null); setSuccessPromiseKept(false); }, 3000);
+      setTimeout(() => { setSuccessType(null); setSuccessPromiseKept(false); setSuccessDeltas([]); }, 3000);
     } catch (e) {
       console.error('Log action failed', e);
     }
@@ -211,10 +224,20 @@ export default function ActionsScreen() {
         {successType && (
           <Animated.View entering={FadeInDown.duration(300)} style={styles.successBanner}>
             <Ionicons name="checkmark-circle" size={18} color="#10B981" />
-            <View style={{ flex: 1, gap: 6 }}>
+            <View style={{ flex: 1, gap: 8 }}>
               <Text style={styles.successText}>
                 {ACTIONS.find(a => a.type === successType)?.identity ?? 'Action logged!'}
               </Text>
+              {successDeltas.length > 0 && (
+                <View style={styles.deltasRow}>
+                  {successDeltas.map(d => (
+                    <View key={d.label} style={[styles.deltaChip, { backgroundColor: `${d.color}18`, borderColor: `${d.color}35` }]}>
+                      <Ionicons name="trending-up" size={10} color={d.color} />
+                      <Text style={[styles.deltaChipText, { color: d.color }]}>+{d.value} {d.label}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
               {successPromiseKept && (
                 <View style={styles.promiseKeptBadge}>
                   <Ionicons name="star" size={12} color="#8B5CF6" />
@@ -586,6 +609,26 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       borderColor: `${colors.primary}30`,
       padding: 16,
       marginTop: 24,
+    },
+    deltasRow: {
+      flexDirection: 'row' as const,
+      flexWrap: 'wrap' as const,
+      gap: 6,
+    },
+    deltaChip: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 99,
+      borderWidth: 1,
+    },
+    deltaChipText: {
+      fontSize: 11,
+      fontWeight: '700' as const,
+      fontFamily: 'Inter_700Bold',
+      letterSpacing: 0.2,
     },
     promiseKeptBadge: {
       flexDirection: 'row' as const,

@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { useGetMe, useGetUserStats, useUpdateMe, getGetMeQueryKey, getGetUserStatsQueryKey } from '@workspace/api-client-react';
+import { useGetMe, useGetUserStats, useUpdateMe, getGetMeQueryKey, getGetUserStatsQueryKey, useGetFutureSelf } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 
 // ── Avatar initials helper ──────────────────────────────────────────
@@ -239,6 +239,7 @@ export default function ProfileScreen() {
 
   const { data: me, isLoading } = useGetMe();
   const { data: stats } = useGetUserStats();
+  const { data: futureSelfList } = useGetFutureSelf();
   const { mutateAsync: updateMe } = useUpdateMe();
 
   const [editVisible, setEditVisible] = useState(false);
@@ -307,6 +308,15 @@ export default function ProfileScreen() {
   const goals = me?.mainGoals ?? '';
   const joinedDaysAgo = stats?.joinedDaysAgo ?? 0;
 
+  const currentProfile = Array.isArray(futureSelfList) ? futureSelfList[0] : null;
+  const SCORE_DIMS = [
+    { key: 'healthScore',     label: 'Health',     color: '#10B981', icon: 'fitness-outline' },
+    { key: 'wealthScore',     label: 'Wealth',     color: '#F59E0B', icon: 'wallet-outline' },
+    { key: 'disciplineScore', label: 'Discipline', color: '#6366F1', icon: 'shield-checkmark-outline' },
+    { key: 'confidenceScore', label: 'Confidence', color: '#F97316', icon: 'flame-outline' },
+    { key: 'knowledgeScore',  label: 'Knowledge',  color: '#3B82F6', icon: 'book-outline' },
+  ] as const;
+
   return (
     <>
       <ScrollView
@@ -347,6 +357,36 @@ export default function ProfileScreen() {
           <StatPill icon="flash" label="Actions" value={totalActions} color="#8B5CF6" colors={colors} />
           <StatPill icon="shield-checkmark" label="Score" value={`${Math.round(overallScore)}%`} color="#3B82F6" colors={colors} />
         </Animated.View>
+
+        {/* Life Scores */}
+        {currentProfile && (
+          <Animated.View entering={FadeInDown.duration(400).delay(150)} style={styles.section}>
+            <Text style={styles.sectionLabel}>Life Scores</Text>
+            <View style={[styles.card, { padding: 16, gap: 14 }]}>
+              {SCORE_DIMS.map(dim => {
+                const score = Math.round((currentProfile as any)[dim.key] ?? 50);
+                return (
+                  <View key={dim.key} style={{ gap: 6 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                        <Ionicons name={dim.icon as any} size={14} color={dim.color} />
+                        <Text style={{ fontSize: 13, fontWeight: '600' as const, color: colors.foreground, fontFamily: 'Inter_600SemiBold' }}>
+                          {dim.label}
+                        </Text>
+                      </View>
+                      <Text style={{ fontSize: 13, fontWeight: '700' as const, color: dim.color, fontFamily: 'Inter_700Bold' }}>
+                        {score}
+                      </Text>
+                    </View>
+                    <View style={{ height: 5, backgroundColor: colors.secondary, borderRadius: 99, overflow: 'hidden' }}>
+                      <View style={{ height: 5, width: `${Math.min(score, 100)}%` as any, backgroundColor: dim.color, borderRadius: 99, opacity: 0.85 }} />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </Animated.View>
+        )}
 
         {/* Account details */}
         <Animated.View entering={FadeInDown.duration(400).delay(180)} style={styles.section}>
