@@ -4,7 +4,7 @@ import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./lib/stripeClient";
 import { pool } from "@workspace/db";
 import cron from "node-cron";
-import { sendDailyReminders, preGenerateTomorrowMissions } from "./routes/push";
+import { sendDailyReminders, preGenerateTomorrowMissions, checkExpoPushReceipts } from "./routes/push";
 
 // ─── Application schema migrations ────────────────────────────────────────────
 // Ensures tables added after the initial deploy exist before the server starts.
@@ -69,13 +69,22 @@ await runAppMigrations();
 await initStripe();
 
 // ─── Hourly jobs ──────────────────────────────────────────────────────────────
-// Push reminders: runs every hour, but sendDailyReminders() only sends to users
-// whose local clock reads 7PM — so each user gets their reminder at the right
-// time regardless of timezone (replaces the old fixed 8PM UTC blast).
+// Push reminders: runs every hour at :00, but sendDailyReminders() only sends
+// to users whose local clock reads 7PM — so each user gets their reminder at
+// the right time regardless of timezone (replaces the old fixed 8PM UTC blast).
+//
+// Receipt check: runs at :30 (30 min after the send) to fetch async Expo
+// receipts and delete tokens that came back as DeviceNotRegistered.
+//
 // Pre-generate missions: still fires once daily at 8PM UTC for active users.
 cron.schedule("0 * * * *", () => {
   logger.info("Running hourly push reminder check (timezone-aware 7PM local)");
   sendDailyReminders().catch((err) => logger.error({ err }, "Push reminder job failed"));
+});
+
+cron.schedule("30 * * * *", () => {
+  logger.info("Running Expo push receipt check (stale token cleanup)");
+  checkExpoPushReceipts().catch((err) => logger.error({ err }, "Expo receipt check job failed"));
 });
 
 cron.schedule("0 20 * * *", () => {

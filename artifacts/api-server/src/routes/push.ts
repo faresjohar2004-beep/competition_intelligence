@@ -12,6 +12,12 @@ const expo = new Expo();
 
 const router = Router();
 
+// In-memory queue of pending Expo receipt IDs → token mapping.
+// Populated by sendExpoPushReminders(); drained by checkExpoPushReceipts().
+// Best-effort: restarting the server drops unprocessed IDs, which is acceptable
+// since the tokens will be caught on the next send cycle.
+const pendingReceiptIds = new Map<string, string>(); // receiptId → push token
+
 const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY ?? "";
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY ?? "";
 const VAPID_SUBJECT     = process.env.VAPID_SUBJECT ?? "mailto:hello@astraos.app";
@@ -169,26 +175,82 @@ async function sendExpoPushReminders() {
 
   for (const chunk of chunks) {
     try {
-      const receipts = await expo.sendPushNotificationsAsync(chunk);
+      const tickets = await expo.sendPushNotificationsAsync(chunk);
 
-      for (let i = 0; i < receipts.length; i++) {
-        const receipt = receipts[i];
-        if (receipt.status === "error") {
-          const token = chunk[i].to as string;
-          logger.warn({ token, details: receipt.details }, "Expo push receipt error");
+      for (let i = 0; i < tickets.length; i++) {
+        const ticket = tickets[i];
+        const token = chunk[i].to as string;
 
-          // DeviceNotRegistered means the token is stale — remove it
-          if (receipt.details?.error === "DeviceNotRegistered") {
+        if (ticket.status === "error") {
+          // Immediate send-time error (e.g. malformed token)
+          logger.warn({ token, details: ticket.details }, "Expo push ticket error (send-time)");
+
+          if (ticket.details?.error === "DeviceNotRegistered") {
             await db
               .delete(pushTokensTable)
               .where(eq(pushTokensTable.token, token));
+            logger.info({ token }, "Deleted stale Expo token (send-time DeviceNotRegistered)");
           }
+        } else if (ticket.id) {
+          // Queue the receipt ID for the async receipt check
+          pendingReceiptIds.set(ticket.id, token);
         }
       }
     } catch (err) {
       logger.error({ err }, "Expo push chunk send failed");
     }
   }
+
+  logger.info({ queued: pendingReceiptIds.size }, "Expo push tickets queued for receipt check");
+}
+
+// ─── Cron-callable: fetch Expo push receipts and prune stale tokens ───────────
+// Expo's receipt API is asynchronous — tickets from sendPushNotificationsAsync
+// must be exchanged for receipts via getPushNotificationReceiptsAsync ~30 min
+// after the initial send. This is where DeviceNotRegistered reliably appears.
+export async function checkExpoPushReceipts() {
+  if (pendingReceiptIds.size === 0) {
+    logger.info("No pending Expo receipt IDs to check");
+    return;
+  }
+
+  const ids = Array.from(pendingReceiptIds.keys());
+  logger.info({ count: ids.length }, "Checking Expo push receipts");
+
+  const receiptIdChunks = expo.chunkPushNotificationReceiptIds(ids);
+
+  for (const chunk of receiptIdChunks) {
+    try {
+      const receipts = await expo.getPushNotificationReceiptsAsync(chunk);
+
+      for (const [receiptId, receipt] of Object.entries(receipts)) {
+        const token = pendingReceiptIds.get(receiptId);
+
+        // Always remove from the queue regardless of outcome
+        pendingReceiptIds.delete(receiptId);
+
+        if (!token) continue;
+
+        if (receipt.status === "error") {
+          logger.warn({ token, receiptId, details: receipt.details }, "Expo push receipt error (async)");
+
+          if (receipt.details?.error === "DeviceNotRegistered") {
+            await db
+              .delete(pushTokensTable)
+              .where(eq(pushTokensTable.token, token));
+            logger.info({ token }, "Deleted stale Expo token (async DeviceNotRegistered)");
+          }
+        }
+      }
+
+      // Any receipt IDs in the chunk that Expo didn't return a receipt for yet
+      // stay in pendingReceiptIds for the next check cycle.
+    } catch (err) {
+      logger.error({ err }, "Expo push receipt fetch failed");
+    }
+  }
+
+  logger.info({ remaining: pendingReceiptIds.size }, "Expo receipt check complete");
 }
 
 // ─── Cron-callable: pre-generate tomorrow's missions for active users ─────────
