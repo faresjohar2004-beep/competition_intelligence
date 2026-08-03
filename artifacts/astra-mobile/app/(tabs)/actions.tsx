@@ -167,6 +167,15 @@ export default function ActionsScreen() {
       setSuccessPromiseKept(isPromiseKept);
       setSelected(null);
       setNotes('');
+      // Clear yesterday's promise on the first action of the day so it doesn't
+      // reappear on future mornings (mirrors web Dashboard behaviour).
+      if (isFirstAction) {
+        updateMe.mutate({ data: { tomorrowPromise: '' } } as any, {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+          },
+        });
+      }
       if (Platform.OS !== 'web') {
         if (isPromiseKept) {
           // Distinct double-pulse pattern for promise-kept moments
