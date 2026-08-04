@@ -17,7 +17,7 @@ router.get("/", requireAuthWithUser, async (req, res) => {
 router.get("/latest", requireAuthWithUser, async (req, res) => {
   const user = (req as any).user;
   const [letter] = await db.select().from(lettersTable).where(eq(lettersTable.userId, user.id)).orderBy(desc(lettersTable.createdAt)).limit(1);
-  if (!letter) return res.status(404).json({ error: "No letters yet" });
+  if (!letter) { res.status(404).json({ error: "No letters yet" }); return; }
   res.json({ ...letter, createdAt: letter.createdAt.toISOString() });
 });
 

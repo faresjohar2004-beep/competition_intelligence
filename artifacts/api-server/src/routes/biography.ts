@@ -22,7 +22,7 @@ router.post("/today", requireAuthWithUser, async (req, res) => {
   const [existing] = await db.select().from(biographyTable).where(
     sql`${biographyTable.userId} = ${user.id} AND ${biographyTable.date} = ${todayStr}`
   );
-  if (existing) return res.status(201).json({ ...existing, createdAt: existing.createdAt.toISOString() });
+  if (existing) { res.status(201).json({ ...existing, createdAt: existing.createdAt.toISOString() }); return; }
 
   // Get today's actions
   const todayActions = await db.select().from(actionsTable).where(

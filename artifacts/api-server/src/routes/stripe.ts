@@ -10,7 +10,7 @@ router.get("/subscription", requireAuthWithUser, async (req, res) => {
   const user = (req as any).user;
   try {
     if (!user.stripeCustomerId) {
-      return res.json({ isPro: false, subscription: null });
+      res.json({ isPro: false, subscription: null }); return;
     }
     const subscription = await stripeStorage.getActiveSubscriptionForCustomer(user.stripeCustomerId);
     const isPro = !!subscription && ["active", "trialing"].includes(subscription.status as string);
@@ -54,7 +54,7 @@ router.get("/products", async (_req, res) => {
 router.post("/checkout", requireAuthWithUser, async (req, res) => {
   const user = (req as any).user;
   const { priceId } = req.body;
-  if (!priceId) return res.status(400).json({ error: "priceId required" });
+  if (!priceId) { res.status(400).json({ error: "priceId required" }); return; }
 
   try {
     const stripe = await getUncachableStripeClient();
@@ -89,7 +89,7 @@ router.post("/checkout", requireAuthWithUser, async (req, res) => {
 router.post("/portal", requireAuthWithUser, async (req, res) => {
   const user = (req as any).user;
   if (!user.stripeCustomerId) {
-    return res.status(400).json({ error: "No billing account found" });
+    res.status(400).json({ error: "No billing account found" }); return;
   }
   try {
     const stripe = await getUncachableStripeClient();

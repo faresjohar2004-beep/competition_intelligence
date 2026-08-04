@@ -25,7 +25,7 @@ router.get("/", requireAuthWithUser, async (req, res) => {
 router.get("/current", requireAuthWithUser, async (req, res) => {
   const user = (req as any).user;
   const [chapter] = await db.select().from(chaptersTable).where(eq(chaptersTable.number, user.currentChapter));
-  if (!chapter) return res.status(404).json({ error: "Not found" });
+  if (!chapter) { res.status(404).json({ error: "Not found" }); return; }
 
   const [uc] = await db.select().from(userChaptersTable).where(
     sql`${userChaptersTable.userId} = ${user.id} AND ${userChaptersTable.chapterNumber} = ${chapter.number}`

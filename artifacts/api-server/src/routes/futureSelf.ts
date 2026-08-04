@@ -23,7 +23,7 @@ router.get("/projection", requireAuthWithUser, async (req, res) => {
   const [current] = await db.select().from(futureSelfTable).where(
     sql`${futureSelfTable.userId} = ${user.id} AND ${futureSelfTable.timeframe} = 'current'`
   );
-  if (!current) return res.json({ fitnessProjection: "", wealthProjection: "", disciplineProjection: "", overallNarrative: "", topRecommendation: "" });
+  if (!current) { res.json({ fitnessProjection: "", wealthProjection: "", disciplineProjection: "", overallNarrative: "", topRecommendation: "" }); return; }
 
   const projection = generateProjection({
     health: current.healthScore,
@@ -46,7 +46,7 @@ router.get("/scores", requireAuthWithUser, async (req, res) => {
   const [current] = await db.select().from(futureSelfTable).where(
     sql`${futureSelfTable.userId} = ${user.id} AND ${futureSelfTable.timeframe} = 'current'`
   );
-  if (!current) return res.json([]);
+  if (!current) { res.json([]); return; }
 
   // Pull ALL of the user's actions so we can reconstruct any window
   const allActions = await db

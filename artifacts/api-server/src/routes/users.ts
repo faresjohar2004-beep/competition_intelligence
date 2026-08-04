@@ -11,7 +11,7 @@ const router = Router();
 router.get("/me", requireAuth, async (req, res) => {
   const clerkId = (req as any).clerkId;
   const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
-  if (!user) return res.status(404).json({ error: "User not found" });
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
   res.json({
     ...user,
     createdAt: user.createdAt.toISOString(),
@@ -136,14 +136,14 @@ router.post("/me/streak-freeze", requireAuthWithUser, async (req, res) => {
     .limit(1);
 
   if (recentFreeze) {
-    return res.status(400).json({ error: "Streak freeze already used this month" });
+    res.status(400).json({ error: "Streak freeze already used this month" }); return;
   }
 
   // Use the user's local timezone so "today" and "yesterday" are correct for
   // their clock — not UTC (which can be a full day ahead for US users at night).
   const todayStr = localDateStr(user.timezone);
   if (user.lastActiveDate === todayStr) {
-    return res.status(400).json({ error: "You already logged today — no freeze needed" });
+    res.status(400).json({ error: "You already logged today — no freeze needed" }); return;
   }
 
   // DST-safe: derive yesterday from the local calendar date, not by subtracting ms.

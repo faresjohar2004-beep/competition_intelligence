@@ -129,7 +129,7 @@ async function sendWebPushReminders() {
   }
 }
 
-async function sendExpoPushReminders() {
+export async function sendExpoPushReminders() {
   const tokens = await db
     .select({
       userId: pushTokensTable.userId,

@@ -10,7 +10,7 @@ const openai = AI_AVAILABLE
 
 async function callOpenAI(
   messages: OpenAI.Chat.ChatCompletionMessageParam[],
-  options: Partial<OpenAI.Chat.CompletionCreateParamsNonStreaming> = {},
+  options: Partial<OpenAI.Chat.ChatCompletionCreateParamsNonStreaming> = {},
 ): Promise<string | null> {
   if (!openai) return null;
   try {
