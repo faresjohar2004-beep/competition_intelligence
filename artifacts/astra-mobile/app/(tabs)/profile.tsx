@@ -11,8 +11,24 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { useGetMe, useGetUserStats, useUpdateMe, getGetMeQueryKey, getGetUserStatsQueryKey, useGetFutureSelf } from '@workspace/api-client-react';
+import { useGetMe, useGetUserStats, useUpdateMe, getGetMeQueryKey, getGetUserStatsQueryKey, useGetFutureSelf, useGetBiography, useGenerateBiographyEntry, getGetBiographyQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
+
+// ── Biography helpers ───────────────────────────────────────────────
+function formatBioDate(dateStr: string): string {
+  try {
+    const d = new Date(`${dateStr}T12:00:00`);
+    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  } catch { return dateStr; }
+}
+const CHAPTER_COLORS: Record<number, string> = {
+  1: '#8B5CF6', 2: '#3B82F6', 3: '#6366F1',
+  4: '#10B981', 5: '#F59E0B', 6: '#F43F5E',
+};
+const CHAPTER_NAMES: Record<number, string> = {
+  1: 'The Awakening',    2: 'Building Momentum', 3: 'Forging Discipline',
+  4: 'Accelerated Growth', 5: 'The Mastery Phase', 6: 'Building a Legacy',
+};
 
 // ── Avatar initials helper ──────────────────────────────────────────
 function getInitials(name?: string | null): string {
@@ -240,6 +256,8 @@ export default function ProfileScreen() {
   const { data: me, isLoading } = useGetMe();
   const { data: stats } = useGetUserStats();
   const { data: futureSelfList } = useGetFutureSelf();
+  const { data: biographyEntries } = useGetBiography();
+  const generateEntry = useGenerateBiographyEntry();
   const { mutateAsync: updateMe } = useUpdateMe();
 
   const [editVisible, setEditVisible] = useState(false);
@@ -309,6 +327,22 @@ export default function ProfileScreen() {
   const joinedDaysAgo = stats?.joinedDaysAgo ?? 0;
 
   const currentProfile = Array.isArray(futureSelfList) ? futureSelfList[0] : null;
+
+  // Biography
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const entries = Array.isArray(biographyEntries) ? biographyEntries as any[] : [];
+  const todayEntry = entries.find((e: any) => e.date === todayStr) ?? null;
+  const displayEntry: any = entries[0] ?? null;
+  const hasToday = !!todayEntry;
+  const handleWriteChapter = () => {
+    generateEntry.mutate(undefined as any, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetBiographyQueryKey() });
+        if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      },
+    });
+  };
+
   const SCORE_DIMS = [
     { key: 'healthScore',     label: 'Health',     color: '#10B981', icon: 'fitness-outline' },
     { key: 'wealthScore',     label: 'Wealth',     color: '#F59E0B', icon: 'wallet-outline' },
@@ -387,6 +421,68 @@ export default function ProfileScreen() {
             </View>
           </Animated.View>
         )}
+
+        {/* Today's Chapter */}
+        <Animated.View entering={FadeInDown.duration(400).delay(165)} style={styles.section}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, marginLeft: 4 }}>
+            <Text style={styles.sectionLabel}>Today's Chapter</Text>
+            {!hasToday && !generateEntry.isPending && displayEntry && (
+              <TouchableOpacity
+                onPress={handleWriteChapter}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: `${colors.primary}15`, borderRadius: 99, borderWidth: 1, borderColor: `${colors.primary}30` }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="sparkles" size={11} color={colors.primary} />
+                <Text style={{ fontSize: 11, fontWeight: '700' as const, color: colors.primary, fontFamily: 'Inter_700Bold' }}>Write</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {displayEntry ? (
+            <View style={styles.bioCard}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: CHAPTER_COLORS[displayEntry.chapterNumber] ?? colors.primary, marginTop: 4, flexShrink: 0 }} />
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                  <Ionicons name="book" size={11} color={CHAPTER_COLORS[displayEntry.chapterNumber] ?? colors.primary} />
+                  <Text style={[styles.bioChapterLabel, { color: CHAPTER_COLORS[displayEntry.chapterNumber] ?? colors.primary }]}>
+                    {CHAPTER_NAMES[displayEntry.chapterNumber] ?? `Chapter ${displayEntry.chapterNumber}`}
+                  </Text>
+                </View>
+                <Text style={styles.bioDate}>{formatBioDate(displayEntry.date)}</Text>
+                <Text style={styles.bioContent}>{displayEntry.content}</Text>
+                {!hasToday && (
+                  <TouchableOpacity
+                    onPress={handleWriteChapter}
+                    disabled={generateEntry.isPending}
+                    style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 5 }}
+                    activeOpacity={0.7}
+                  >
+                    {generateEntry.isPending
+                      ? <><ActivityIndicator size="small" color={colors.primary} /><Text style={styles.bioLinkText}>Writing...</Text></>
+                      : <><Ionicons name="add-circle-outline" size={13} color={colors.primary} /><Text style={styles.bioLinkText}>Write today's chapter</Text></>
+                    }
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.bioEmptyCard}
+              onPress={handleWriteChapter}
+              disabled={generateEntry.isPending}
+              activeOpacity={0.82}
+            >
+              {generateEntry.isPending ? (
+                <><ActivityIndicator size="small" color={colors.primary} /><Text style={styles.bioEmptySubtext}>Writing your chapter...</Text></>
+              ) : (
+                <>
+                  <Ionicons name="book-outline" size={22} color={`${colors.primary}70`} />
+                  <Text style={styles.bioEmptyTitle}>Your story starts today.</Text>
+                  <Text style={styles.bioEmptySubtext}>Write today's chapter based on your actions.</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+        </Animated.View>
 
         {/* Account details */}
         <Animated.View entering={FadeInDown.duration(400).delay(180)} style={styles.section}>
@@ -567,6 +663,61 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       borderWidth: 1,
       borderColor: colors.border,
       overflow: 'hidden',
+    },
+    bioCard: {
+      backgroundColor: colors.card,
+      borderRadius: colors.radius,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 16,
+      flexDirection: 'row' as const,
+      gap: 12,
+    },
+    bioChapterLabel: {
+      fontSize: 11,
+      fontWeight: '600' as const,
+      fontFamily: 'Inter_600SemiBold',
+      letterSpacing: 0.3,
+    },
+    bioDate: {
+      fontSize: 11,
+      color: colors.mutedForeground,
+      fontFamily: 'Inter_400Regular',
+      marginBottom: 8,
+    },
+    bioContent: {
+      fontSize: 13,
+      color: colors.foreground,
+      fontFamily: 'Inter_500Medium',
+      lineHeight: 20,
+      opacity: 0.9,
+    },
+    bioLinkText: {
+      fontSize: 12,
+      color: colors.primary,
+      fontFamily: 'Inter_500Medium',
+    },
+    bioEmptyCard: {
+      backgroundColor: colors.card,
+      borderRadius: colors.radius,
+      borderWidth: 1,
+      borderColor: `${colors.primary}25`,
+      borderStyle: 'dashed' as const,
+      padding: 24,
+      alignItems: 'center' as const,
+      gap: 8,
+    },
+    bioEmptyTitle: {
+      fontSize: 14,
+      fontWeight: '600' as const,
+      color: colors.foreground,
+      fontFamily: 'Inter_600SemiBold',
+    },
+    bioEmptySubtext: {
+      fontSize: 12,
+      color: colors.mutedForeground,
+      fontFamily: 'Inter_400Regular',
+      textAlign: 'center' as const,
     },
   });
 }
