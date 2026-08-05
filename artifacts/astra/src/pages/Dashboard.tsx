@@ -5,7 +5,7 @@ import {
   useGetMe, useGetFutureSelf, useGetTodayActions, useGetCurrentChapter, useGetUserStats,
   useLogAction, useGetActions, useUpdateMe, getGetMeQueryKey,
   getGetTodayActionsQueryKey, getGetFutureSelfQueryKey, getGetUserStatsQueryKey, getGetActionsQueryKey,
-  useGetLatestLetter,
+  useGetLatestLetter, useGenerateBiographyEntry, getGetBiographyQueryKey,
 } from "@workspace/api-client-react";
 import { useAlignment, useMissions, useCompleteMission } from "@/hooks/useMissions";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
@@ -2209,6 +2209,7 @@ export default function Dashboard() {
   const logAction = useLogAction();
   const updateMe = useUpdateMe();
   const completeMission = useCompleteMission();
+  const generateBio = useGenerateBiographyEntry();
 
   const { data: allActionsRaw = [] } = useGetActions({ limit: 200 });
   const allActions = allActionsRaw as any[];
@@ -2481,6 +2482,11 @@ export default function Dashboard() {
           });
         }
         if (isFirstActionOfDay) {
+          // Silently generate today's biography entry in the background —
+          // it will be ready on the Biography page without a separate tap.
+          generateBio.mutate(undefined as any, {
+            onSuccess: () => qc.invalidateQueries({ queryKey: getGetBiographyQueryKey() }),
+          });
           setTimeout(() => {
             setJustLogged(null);
             if (isMilestone) {
@@ -2504,7 +2510,7 @@ export default function Dashboard() {
       },
       onSettled: () => setLoggingType(null),
     });
-  }, [loggingType, logAction, qc, actionsToday, streakDays, missions, completeMission, tomorrowPromise, updateMe]);
+  }, [loggingType, logAction, qc, actionsToday, streakDays, missions, completeMission, tomorrowPromise, updateMe, generateBio]);
 
   return (
     <AppLayout>

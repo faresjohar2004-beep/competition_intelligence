@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
-import { useLogAction, useGetTodayActions, getGetTodayActionsQueryKey, useGetMe, useUpdateMe, getGetMeQueryKey } from '@workspace/api-client-react';
+import { useLogAction, useGetTodayActions, getGetTodayActionsQueryKey, useGetMe, useUpdateMe, getGetMeQueryKey, useGenerateBiographyEntry, getGetBiographyQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -117,6 +117,7 @@ export default function ActionsScreen() {
       },
     },
   });
+  const generateBio = useGenerateBiographyEntry();
 
   const loggedTypes = new Set(todayData?.actions?.map(a => a.type) ?? []);
   const tomorrowPromise = (me as any)?.tomorrowPromise as string | null | undefined;
@@ -186,6 +187,13 @@ export default function ActionsScreen() {
         updateMe.mutate({ data: { tomorrowPromise: '' } } as any, {
           onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+          },
+        });
+        // Silently generate today's biography entry so it's ready on the Profile
+        // tab without requiring a separate tap — zero-friction identity reinforcement.
+        generateBio.mutate(undefined as any, {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: getGetBiographyQueryKey() });
           },
         });
       }
