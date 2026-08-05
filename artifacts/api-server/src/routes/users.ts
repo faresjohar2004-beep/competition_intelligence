@@ -4,6 +4,8 @@ import { eq, count, sql, gte, and } from "drizzle-orm";
 import { requireAuth, requireAuthWithUser } from "../lib/auth";
 import { clampScore, calcOverallScore } from "../lib/scores";
 import { localDateStr, localYesterdayStr } from "../lib/dateUtils";
+import { createClerkClient } from "@clerk/express";
+import { getUncachableStripeClient } from "../lib/stripeClient";
 
 const router = Router();
 
@@ -197,6 +199,193 @@ router.get("/stats", requireAuthWithUser, async (req, res) => {
     joinedDaysAgo,
     actionsThisWeek: weekActions.count,
   });
+});
+
+// ── Helpers shared by the delete endpoint and the drain worker ────────────────
+
+// Subscription statuses that can and must be cancelled before deleting a customer.
+const CANCELLABLE_STATUSES = new Set(["active", "trialing", "past_due", "paused"]);
+
+/** Return true if a Stripe error indicates the resource is already gone. */
+function stripeResourceGone(err: any): boolean {
+  return (
+    err?.statusCode === 404 ||
+    err?.code === "resource_missing" ||
+    String(err?.message ?? "").toLowerCase().includes("no such customer") ||
+    String(err?.message ?? "").toLowerCase().includes("no such subscription")
+  );
+}
+
+/**
+ * Cancel all cancellable Stripe subscriptions and delete the Stripe customer.
+ * Also removes the synced stripe.* rows from the local DB immediately.
+ *
+ * Idempotent: "resource not found" responses from Stripe are treated as
+ * already purged so retries succeed without re-fetching a nonexistent customer.
+ *
+ * No-op if stripeCustomerId is null/undefined.
+ * THROWS on unexpected Stripe API errors — the caller must not proceed with
+ * account deletion so the user can retry once Stripe is reachable again.
+ */
+export async function purgeStripeData(stripeCustomerId: string | null | undefined): Promise<void> {
+  if (!stripeCustomerId) return;
+
+  const stripe = await getUncachableStripeClient();
+
+  // Enumerate ALL subscriptions (paginated) to catch every cancellable state:
+  // active, trialing, past_due, paused — not just "active".
+  // If the customer is already gone, treat it as already purged.
+  let toCancel: string[] = [];
+  try {
+    let lastId: string | undefined;
+    do {
+      const page = await stripe.subscriptions.list({
+        customer: stripeCustomerId,
+        status: "all",
+        limit: 100,
+        ...(lastId ? { starting_after: lastId } : {}),
+      });
+      for (const sub of page.data) {
+        if (CANCELLABLE_STATUSES.has(sub.status)) toCancel.push(sub.id);
+      }
+      lastId = page.has_more ? page.data[page.data.length - 1].id : undefined;
+    } while (lastId);
+  } catch (listErr: any) {
+    if (stripeResourceGone(listErr)) {
+      // Customer already deleted from Stripe — clean up local rows and return.
+      await db.execute(sql`DELETE FROM stripe.subscriptions WHERE customer = ${stripeCustomerId}`);
+      await db.execute(sql`DELETE FROM stripe.customers WHERE id = ${stripeCustomerId}`);
+      return;
+    }
+    throw listErr;
+  }
+
+  // Cancel each subscription — treat already-cancelled/missing as success.
+  await Promise.all(
+    toCancel.map((id) =>
+      stripe.subscriptions.cancel(id).catch((err: any) => {
+        if (!stripeResourceGone(err)) throw err;
+        // Already cancelled — idempotent, continue.
+      })
+    )
+  );
+
+  // Delete the Stripe customer — sends lifecycle webhooks and removes
+  // associated payment methods / invoices from Stripe's systems.
+  // Treat already-deleted as success.
+  await stripe.customers.del(stripeCustomerId).catch((err: any) => {
+    if (!stripeResourceGone(err)) throw err;
+  });
+
+  // Remove synced rows from the local stripe.* schema immediately so PII
+  // is not retained while waiting for webhook delivery.
+  await db.execute(sql`DELETE FROM stripe.subscriptions WHERE customer = ${stripeCustomerId}`);
+  await db.execute(sql`DELETE FROM stripe.customers WHERE id = ${stripeCustomerId}`);
+}
+
+/**
+ * Atomically delete all DB rows owned by a user.
+ * Idempotent — calling it when the user no longer exists is a no-op.
+ *
+ * user_chapters has no cascade FK from users and must be deleted explicitly.
+ * All other user-owned tables declare ON DELETE CASCADE from users(id).
+ * The pending_deletions row also cascades away when users(id) is deleted,
+ * so no separate clearPendingDeletion call is needed after this succeeds.
+ *
+ * Stripe cleanup is NOT included here because stripeCustomerId must be read
+ * before the user row is deleted. Call purgeStripeData() first.
+ */
+export async function purgeUserDbData(userId: number): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.delete(userChaptersTable).where(eq(userChaptersTable.userId, userId));
+    await tx.delete(usersTable).where(eq(usersTable.id, userId));
+  });
+}
+
+// DELETE /api/users/me
+//
+// Deletion order — every step is retryable until committed:
+//   1. Stripe   — cancel subscriptions + delete customer. Blocking: if this
+//                 throws, return 500 and the user can retry (Clerk session intact).
+//   2. pending  — insert intent row (clerk_deleted_at = NULL).
+//   3. Clerk    — delete identity. Blocking on non-404 failure.
+//   4. stamp    — set clerk_deleted_at = NOW() (best-effort; drain recovers).
+//   5. DB purge — user_chapters + users (cascade + FK removes pending row).
+//                 Blocking: if fails, drain worker retries automatically.
+router.delete("/me", requireAuthWithUser, async (req, res) => {
+  const user = (req as any).user;
+  const clerkId = user.clerkId as string;
+
+  // Step 1 — Stripe cleanup (blocking; all subsequent steps are irreversible).
+  // Must run first so stripeCustomerId is still on the user row, and so the
+  // user can retry with their Clerk session if Stripe is temporarily unavailable.
+  // After success, immediately null out stripeCustomerId in the DB so any
+  // retry skips Stripe cleanup entirely (the idempotency checkpoint).
+  try {
+    await purgeStripeData(user.stripeCustomerId);
+    if (user.stripeCustomerId) {
+      await db.execute(
+        sql`UPDATE users SET stripe_customer_id = NULL WHERE id = ${user.id}`
+      );
+    }
+  } catch (stripeErr: any) {
+    console.error(`Account deletion: Stripe cleanup failed for userId=${user.id}:`, stripeErr?.message ?? stripeErr);
+    res.status(500).json({
+      error: "Could not cancel your subscription. Please try again, or contact support if the problem persists.",
+    });
+    return;
+  }
+
+  // Step 2 — record deletion intent (clerk_deleted_at = NULL).
+  await db.execute(
+    sql`INSERT INTO pending_deletions (user_id, clerk_id, clerk_deleted_at)
+        VALUES (${user.id}, ${clerkId}, NULL)
+        ON CONFLICT (user_id) DO NOTHING`
+  );
+
+  // Step 3 — delete the Clerk identity (blocking on non-404 failures).
+  try {
+    const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+    await clerk.users.deleteUser(clerkId);
+  } catch (err: any) {
+    const isNotFound =
+      err?.status === 404 ||
+      String(err?.message ?? "").toLowerCase().includes("not found");
+    if (!isNotFound) {
+      console.error(`Account deletion: Clerk removal failed for userId=${user.id}:`, err?.message ?? err);
+      res.status(500).json({ error: "Could not remove authentication credentials. Please try again." });
+      return;
+    }
+    // 404 = already deleted — treat as confirmed.
+  }
+
+  // Step 4 — stamp clerk_deleted_at (best-effort; drain worker recovers via Clerk API).
+  try {
+    await db.execute(
+      sql`UPDATE pending_deletions SET clerk_deleted_at = NOW() WHERE user_id = ${user.id}`
+    );
+  } catch (stampErr: any) {
+    console.error(
+      `Account deletion: failed to stamp clerk_deleted_at for userId=${user.id}. ` +
+      `Drain worker will verify via Clerk API. Error: ${stampErr?.message ?? stampErr}`
+    );
+  }
+
+  // Step 5 — atomically delete all user DB data.
+  // On success the FK cascade removes the pending row automatically.
+  // On failure the pending row stays and the drain worker retries.
+  try {
+    await purgeUserDbData(user.id);
+  } catch (dbErr: any) {
+    console.error(
+      `Account deletion: DB cleanup failed for userId=${user.id} (drain worker will retry). ` +
+      `Error: ${dbErr?.message ?? dbErr}`
+    );
+    res.status(500).json({ error: "Account data could not be fully removed. Please contact support." });
+    return;
+  }
+
+  res.status(204).end();
 });
 
 export default router;

@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
-import { useClerk, useUser } from '@clerk/clerk-expo';
+import { useClerk, useUser, useAuth } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -250,6 +250,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { signOut } = useClerk();
   const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -263,6 +264,7 @@ export default function ProfileScreen() {
   const [editVisible, setEditVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const styles = makeStyles(colors);
 
@@ -287,6 +289,58 @@ export default function ProfileScreen() {
               setSigningOut(false);
               Alert.alert('Error', 'Failed to sign out. Please try again.');
             }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all your data — actions, missions, scores, biography, and everything else. This cannot be undone.\n\nAny active subscription will be cancelled automatically. App store in-app purchases must be managed separately in your device\'s app store settings.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: () => {
+            // Second confirmation
+            Alert.alert(
+              'Are you absolutely sure?',
+              'All your progress will be lost forever.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Yes, Delete Everything',
+                  style: 'destructive',
+                  onPress: async () => {
+                    setDeleting(true);
+                    try {
+                      // Attach the Clerk Bearer token explicitly — Expo has no
+                      // cookie jar, so credentials:"include" doesn't carry auth.
+                      const token = await getToken();
+                      const domain = process.env.EXPO_PUBLIC_DOMAIN;
+                      const baseUrl = domain ? `https://${domain}` : '';
+                      const res = await fetch(`${baseUrl}/api/users/me`, {
+                        method: 'DELETE',
+                        headers: token ? { Authorization: `Bearer ${token}` } : {},
+                      });
+                      if (!res.ok && res.status !== 204) {
+                        const body = await res.json().catch(() => ({}));
+                        throw new Error((body as any).error ?? 'Could not delete account. Please try again.');
+                      }
+                      await signOut();
+                      router.replace('/(auth)/sign-in');
+                    } catch (err: any) {
+                      setDeleting(false);
+                      Alert.alert('Error', err?.message ?? 'Could not delete account. Please try again.');
+                    }
+                  },
+                },
+              ]
+            );
           },
         },
       ]
@@ -511,12 +565,12 @@ export default function ProfileScreen() {
           </View>
         </Animated.View>
 
-        {/* Sign out */}
+        {/* Sign out + Delete account */}
         <Animated.View entering={FadeInDown.duration(400).delay(240)} style={styles.section}>
           <Text style={styles.sectionLabel}>Session</Text>
           <View style={styles.card}>
             <TouchableOpacity
-              style={[rowStyles(colors, true).row, { borderBottomWidth: 0 }]}
+              style={rowStyles(colors, true).row}
               onPress={handleSignOut}
               disabled={signingOut}
               activeOpacity={0.7}
@@ -529,6 +583,26 @@ export default function ProfileScreen() {
               <Text style={{ fontSize: 14, fontWeight: '600' as const, color: colors.destructive, fontFamily: 'Inter_600SemiBold', flex: 1 }}>
                 Sign Out
               </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[rowStyles(colors, true).row, { borderBottomWidth: 0 }]}
+              onPress={handleDeleteAccount}
+              disabled={deleting}
+              activeOpacity={0.7}
+            >
+              <View style={[{ width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: `${colors.destructive}15` }]}>
+                {deleting
+                  ? <ActivityIndicator color={colors.destructive} size="small" />
+                  : <Ionicons name="trash-outline" size={16} color={colors.destructive} />}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600' as const, color: colors.destructive, fontFamily: 'Inter_600SemiBold' }}>
+                  Delete Account
+                </Text>
+                <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 1 }}>
+                  Permanently remove all data
+                </Text>
+              </View>
             </TouchableOpacity>
           </View>
         </Animated.View>

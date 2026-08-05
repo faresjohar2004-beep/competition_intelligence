@@ -4,7 +4,7 @@ import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./lib/stripeClient";
 import { pool } from "@workspace/db";
 import cron from "node-cron";
-import { scheduleCronJobs } from "./lib/cronJobs";
+import { scheduleCronJobs, drainPendingDeletions } from "./lib/cronJobs";
 
 // ─── Application schema migrations ────────────────────────────────────────────
 // Ensures tables added after the initial deploy exist before the server starts.
@@ -20,7 +20,43 @@ async function runAppMigrations() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
-    logger.info("App schema migrations applied (push_tokens)");
+
+    // Durable deletion queue. Each row represents a deletion that started but
+    // may not have fully completed:
+    //   clerk_deleted_at NULL  → Clerk deletion not yet confirmed
+    //   clerk_deleted_at SET   → Clerk identity gone; DB cleanup still needed
+    // FK ON DELETE CASCADE means the row auto-disappears when the user row
+    // is successfully deleted, so no explicit cleanup call is needed.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS pending_deletions (
+        id                SERIAL PRIMARY KEY,
+        user_id           INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        clerk_id          TEXT    NOT NULL,
+        clerk_deleted_at  TIMESTAMPTZ,
+        created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    // Add clerk_deleted_at and FK constraint to existing installs that lack them.
+    await pool.query(`
+      ALTER TABLE pending_deletions
+        ADD COLUMN IF NOT EXISTS clerk_deleted_at TIMESTAMPTZ
+    `);
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'pending_deletions_user_id_fkey'
+            AND conrelid = 'pending_deletions'::regclass
+        ) THEN
+          ALTER TABLE pending_deletions
+            ADD CONSTRAINT pending_deletions_user_id_fkey
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+        END IF;
+      END $$
+    `);
+
+    logger.info("App schema migrations applied (push_tokens, pending_deletions)");
   } catch (err) {
     logger.error({ err }, "App schema migration failed");
     throw err;
@@ -67,6 +103,11 @@ if (Number.isNaN(port) || port <= 0) {
 
 await runAppMigrations();
 await initStripe();
+
+// ─── Drain any pending account deletions from previous failed attempts ────────
+drainPendingDeletions().catch((err) =>
+  logger.error({ err }, "Startup pending deletion drain failed"),
+);
 
 // ─── Cron jobs ────────────────────────────────────────────────────────────────
 scheduleCronJobs(cron);
