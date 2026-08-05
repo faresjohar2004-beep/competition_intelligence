@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -11,12 +11,12 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
-import { Redirect, Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { ClerkProvider, ClerkLoaded, useAuth } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
-import { setBaseUrl, setAuthTokenGetter, useGetMe, getGetMeQueryKey } from '@workspace/api-client-react';
-import { View } from 'react-native';
+import { setBaseUrl, setAuthTokenGetter, useGetMe, useUpdateMe, getGetMeQueryKey } from '@workspace/api-client-react';
+import { AppState, AppStateStatus, View } from 'react-native';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -65,6 +65,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { isSignedIn, isLoaded, getToken } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const updateMe = useUpdateMe();
+  const lastSyncedTz = useRef<string | null>(null);
 
   // Register the bearer token getter so every API call is authenticated
   useEffect(() => {
@@ -79,6 +81,38 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       retry: false, // 404 = not onboarded, don't retry
     },
   });
+
+  // Silently sync timezone whenever the stored value differs from the device.
+  // Called on first load and again on every foreground resume.
+  const syncTimezone = useRef(() => {});
+  syncTimezone.current = () => {
+    if (!me?.onboarded) return;
+    const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!deviceTz) return;
+    // Skip if we already synced this value in the current session
+    if (lastSyncedTz.current === deviceTz) return;
+    if ((me as any).timezone === deviceTz) {
+      lastSyncedTz.current = deviceTz;
+      return;
+    }
+    lastSyncedTz.current = deviceTz;
+    updateMe.mutate({ data: { timezone: deviceTz } } as any);
+  };
+
+  // Sync on initial load (once me is resolved)
+  useEffect(() => {
+    if (me) syncTimezone.current();
+  }, [me]);
+
+  // Sync again every time the app comes back to the foreground
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      if (nextState === 'active') {
+        syncTimezone.current();
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (!isLoaded) return;
