@@ -386,8 +386,9 @@ export default function ProfileScreen() {
   const todayStr = new Date().toISOString().slice(0, 10);
   const entries = Array.isArray(biographyEntries) ? biographyEntries as any[] : [];
   const todayEntry = entries.find((e: any) => e.date === todayStr) ?? null;
-  const displayEntry: any = entries[0] ?? null;
   const hasToday = !!todayEntry;
+  // Show the 3 most recent entries as a timeline
+  const timelineEntries = entries.slice(0, 3);
   const handleWriteChapter = () => {
     generateEntry.mutate(undefined as any, {
       onSuccess: () => {
@@ -476,49 +477,19 @@ export default function ProfileScreen() {
           </Animated.View>
         )}
 
-        {/* Today's Chapter */}
+        {/* Your Story — biography timeline */}
         <Animated.View entering={FadeInDown.duration(400).delay(165)} style={styles.section}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, marginLeft: 4 }}>
-            <Text style={styles.sectionLabel}>Today's Chapter</Text>
-            {!hasToday && !generateEntry.isPending && displayEntry && (
-              <TouchableOpacity
-                onPress={handleWriteChapter}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: `${colors.primary}15`, borderRadius: 99, borderWidth: 1, borderColor: `${colors.primary}30` }}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="sparkles" size={11} color={colors.primary} />
-                <Text style={{ fontSize: 11, fontWeight: '700' as const, color: colors.primary, fontFamily: 'Inter_700Bold' }}>Write</Text>
-              </TouchableOpacity>
+            <Text style={styles.sectionLabel}>Your Story</Text>
+            {entries.length > 0 && (
+              <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: 'Inter_400Regular' }}>
+                {entries.length} chapter{entries.length !== 1 ? 's' : ''}
+              </Text>
             )}
           </View>
-          {displayEntry ? (
-            <View style={styles.bioCard}>
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: CHAPTER_COLORS[displayEntry.chapterNumber] ?? colors.primary, marginTop: 4, flexShrink: 0 }} />
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
-                  <Ionicons name="book" size={11} color={CHAPTER_COLORS[displayEntry.chapterNumber] ?? colors.primary} />
-                  <Text style={[styles.bioChapterLabel, { color: CHAPTER_COLORS[displayEntry.chapterNumber] ?? colors.primary }]}>
-                    {CHAPTER_NAMES[displayEntry.chapterNumber] ?? `Chapter ${displayEntry.chapterNumber}`}
-                  </Text>
-                </View>
-                <Text style={styles.bioDate}>{formatBioDate(displayEntry.date)}</Text>
-                <Text style={styles.bioContent}>{displayEntry.content}</Text>
-                {!hasToday && (
-                  <TouchableOpacity
-                    onPress={handleWriteChapter}
-                    disabled={generateEntry.isPending}
-                    style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 5 }}
-                    activeOpacity={0.7}
-                  >
-                    {generateEntry.isPending
-                      ? <><ActivityIndicator size="small" color={colors.primary} /><Text style={styles.bioLinkText}>Writing...</Text></>
-                      : <><Ionicons name="add-circle-outline" size={13} color={colors.primary} /><Text style={styles.bioLinkText}>Write today's chapter</Text></>
-                    }
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          ) : (
+
+          {timelineEntries.length === 0 ? (
+            /* Empty state — no entries yet */
             <TouchableOpacity
               style={styles.bioEmptyCard}
               onPress={handleWriteChapter}
@@ -531,10 +502,82 @@ export default function ProfileScreen() {
                 <>
                   <Ionicons name="book-outline" size={22} color={`${colors.primary}70`} />
                   <Text style={styles.bioEmptyTitle}>Your story starts today.</Text>
-                  <Text style={styles.bioEmptySubtext}>Write today's chapter based on your actions.</Text>
+                  <Text style={styles.bioEmptySubtext}>Log an action to write your first chapter.</Text>
                 </>
               )}
             </TouchableOpacity>
+          ) : (
+            <View style={[styles.card, { padding: 16 }]}>
+              {/* Pending "write today" entry shown at top when today not yet written */}
+              {!hasToday && (
+                <TouchableOpacity
+                  onPress={handleWriteChapter}
+                  disabled={generateEntry.isPending}
+                  style={{ flexDirection: 'row', gap: 12, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: 16 }}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ alignItems: 'center', width: 8, paddingTop: 2 }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, borderWidth: 2, borderColor: colors.primary, backgroundColor: 'transparent' }} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700' as const, color: colors.primary, fontFamily: 'Inter_700Bold', letterSpacing: 0.8, marginBottom: 5 }}>TODAY</Text>
+                    {generateEntry.isPending ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <ActivityIndicator size="small" color={colors.primary} />
+                        <Text style={styles.bioLinkText}>Writing your chapter...</Text>
+                      </View>
+                    ) : (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                        <Ionicons name="add-circle-outline" size={13} color={colors.primary} />
+                        <Text style={styles.bioLinkText}>Write today's chapter</Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {/* Timeline — up to 3 most recent entries */}
+              {timelineEntries.map((entry: any, idx: number) => {
+                const dotColor = CHAPTER_COLORS[entry.chapterNumber] ?? colors.primary;
+                const isLast = idx === timelineEntries.length - 1;
+                const isFirst = idx === 0;
+                const isToday = entry.date === todayStr;
+
+                return (
+                  <View key={entry.id} style={{ flexDirection: 'row', gap: 12 }}>
+                    {/* Timeline spine */}
+                    <View style={{ alignItems: 'center', width: 8 }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor, marginTop: 2, opacity: isFirst ? 1 : 0.55 }} />
+                      {!isLast && (
+                        <View style={{ width: 1, flex: 1, backgroundColor: colors.border, marginTop: 6 }} />
+                      )}
+                    </View>
+
+                    {/* Entry content */}
+                    <View style={{ flex: 1, paddingBottom: isLast ? 0 : 18 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                        <Ionicons name="book" size={11} color={dotColor} style={{ opacity: isFirst ? 1 : 0.6 }} />
+                        <Text style={[styles.bioChapterLabel, { color: dotColor, opacity: isFirst ? 1 : 0.7 }]}>
+                          {CHAPTER_NAMES[entry.chapterNumber] ?? `Chapter ${entry.chapterNumber}`}
+                        </Text>
+                        {isToday && (
+                          <View style={{ paddingHorizontal: 6, paddingVertical: 1, backgroundColor: `${colors.primary}20`, borderRadius: 99 }}>
+                            <Text style={{ fontSize: 9, fontWeight: '700' as const, color: colors.primary, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 }}>TODAY</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.bioDate, { opacity: isFirst ? 1 : 0.7 }]}>{formatBioDate(entry.date)}</Text>
+                      <Text
+                        style={[styles.bioContent, { opacity: isFirst ? 0.9 : 0.5 }]}
+                        numberOfLines={isFirst ? undefined : 3}
+                      >
+                        {entry.content}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
           )}
         </Animated.View>
 
