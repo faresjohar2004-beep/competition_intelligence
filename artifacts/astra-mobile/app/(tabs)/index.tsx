@@ -5,7 +5,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
-import { useGetMe, useGetUserStats, useGetTodayActions, useGetFutureSelf, useUpdateMe, getGetMeQueryKey } from '@workspace/api-client-react';
+import { useGetMe, useGetUserStats, useGetTodayActions, useGetFutureSelf, useUpdateMe, getGetMeQueryKey, useGetActions } from '@workspace/api-client-react';
+import { PROMISE_SUGGESTIONS, DEFAULT_SUGGESTIONS, getDominantActionType } from '@/utils/promiseSuggestions';
 import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -42,7 +43,6 @@ function getStreakWord(streak: number) {
   return STREAK_WORDS[0];
 }
 
-const DEFAULT_SUGGESTIONS = ['I will show up again', 'I will do the work', 'I will keep the streak alive'];
 
 export default function DashboardScreen() {
   const colors = useColors();
@@ -58,6 +58,8 @@ export default function DashboardScreen() {
   const { data: stats, refetch: refetchStats } = useGetUserStats();
   const { data: todayData, refetch: refetchToday } = useGetTodayActions();
   const { data: futureSelf } = useGetFutureSelf();
+  // Fetch recent action history to personalize tomorrow's promise suggestions
+  const { data: recentActions } = useGetActions({ limit: 30 });
   const updateMe = useUpdateMe();
 
   const currentScores = futureSelf?.find(f => f.timeframe === 'current');
@@ -101,6 +103,12 @@ export default function DashboardScreen() {
   const tomorrowPromise = (me as any)?.tomorrowPromise as string | null | undefined;
 
   const streakInfo = getStreakWord(streak);
+
+  // Personalize suggestion chips based on the user's most-logged action type
+  const historicalTypes = (recentActions ?? []).map((a: any) => a.type as string);
+  const dominantType = getDominantActionType(historicalTypes);
+  const homeSuggestions = PROMISE_SUGGESTIONS[dominantType ?? ''] ?? DEFAULT_SUGGESTIONS;
+
   const now = new Date();
   const hour = now.getHours();
   const greeting = hour < 5 ? 'Burning the midnight oil' : hour < 12 ? 'Good morning' : hour < 17 ? 'This afternoon' : 'This evening';
@@ -227,9 +235,18 @@ export default function DashboardScreen() {
           </View>
           <Text style={styles.promiseQuestion}>What will you do tomorrow?</Text>
 
-          {/* Suggestion chips */}
+          {/* Suggestion chips — personalized to the user's most-logged action type */}
+          {dominantType && (
+            <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: 'Inter_400Regular', marginBottom: 6, letterSpacing: 0.4, opacity: 0.7 }}>
+              Based on your{' '}
+              <Text style={{ fontFamily: 'Inter_600SemiBold', color: `${colors.primary}B0` }}>
+                {dominantType.replace('_', ' ')}
+              </Text>
+              {' '}habit
+            </Text>
+          )}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={{ gap: 8, paddingRight: 4 }}>
-            {DEFAULT_SUGGESTIONS.map(s => (
+            {homeSuggestions.map(s => (
               <TouchableOpacity
                 key={s}
                 onPress={() => setPromise(s)}

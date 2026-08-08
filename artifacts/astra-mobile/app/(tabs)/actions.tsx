@@ -10,6 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import { PROMISE_SUGGESTIONS, DEFAULT_SUGGESTIONS } from '@/utils/promiseSuggestions';
 
 type ActionType = 'workout' | 'deep_work' | 'learning' | 'content_creation' | 'saving' | 'reading' | 'meditation' | 'sleep' | 'water';
 
@@ -31,20 +32,6 @@ const ACTIONS: Array<{
   { type: 'sleep',            label: 'Sleep',          color: '#0EA5E9', icon: 'moon-outline',         identity: 'You are someone who plays the long game.',                   impact: '+1.5% Health' },
   { type: 'water',            label: 'Water',          color: '#06B6D4', icon: 'water-outline',        identity: 'You are someone who takes care of their body.',              impact: '+1% Health' },
 ];
-
-// ─── Tomorrow's promise suggestions, keyed by action type ────────────────────
-const PROMISE_SUGGESTIONS: Record<string, string[]> = {
-  workout:          ['I will work out again',         'I will train for 30 minutes',       'I will move my body'],
-  deep_work:        ['I will do 90 min of deep work', 'I will focus without distraction',  'I will make real progress on my work'],
-  learning:         ['I will study for an hour',      'I will learn something new',        'I will invest in my education'],
-  content_creation: ['I will create and ship',        'I will put my work into the world', 'I will build something today'],
-  saving:           ['I will make a wealth decision',  'I will track my spending',          'I will save money'],
-  reading:          ['I will read for 30 minutes',    'I will finish a chapter',           'I will read before bed'],
-  meditation:       ['I will meditate',               'I will find 10 minutes of calm',   'I will clear my mind'],
-  sleep:            ['I will sleep by 10pm',          'I will protect my sleep',           'I will prioritize rest'],
-  water:            ['I will drink 8 glasses',        'I will stay hydrated all day',      'I will take care of my body'],
-};
-const DEFAULT_SUGGESTIONS = ['I will show up again', 'I will do the work', 'I will keep the streak alive'];
 
 function ActionCard({
   action,
