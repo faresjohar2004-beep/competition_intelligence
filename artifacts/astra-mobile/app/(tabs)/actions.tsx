@@ -107,7 +107,7 @@ export default function ActionsScreen() {
   const generateBio = useGenerateBiographyEntry();
 
   const loggedTypes = new Set(todayData?.actions?.map(a => a.type) ?? []);
-  const tomorrowPromise = (me as any)?.tomorrowPromise as string | null | undefined;
+  const tomorrowPromise = me?.tomorrowPromise;
   // Show input when ≥1 action logged and no promise set yet this session or from server
   const showPromiseCard = loggedTypes.size > 0 && !promiseSealed && !tomorrowPromise;
   // Show sealed confirmation when promise is set (either just now or from a previous session)

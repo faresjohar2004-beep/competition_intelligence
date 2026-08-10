@@ -38,6 +38,9 @@ export const GetMeResponse = zod.object({
   "dailyHabits": zod.string().nullish(),
   "currentChapter": zod.number().optional(),
   "streakDays": zod.number().optional(),
+  "promiseStreak": zod.number().optional(),
+  "lastPromiseDate": zod.string().nullish(),
+  "tomorrowPromise": zod.string().nullish(),
   "role": zod.string().optional(),
   "createdAt": zod.string()
 })
@@ -72,6 +75,9 @@ export const UpdateMeResponse = zod.object({
   "dailyHabits": zod.string().nullish(),
   "currentChapter": zod.number().optional(),
   "streakDays": zod.number().optional(),
+  "promiseStreak": zod.number().optional(),
+  "lastPromiseDate": zod.string().nullish(),
+  "tomorrowPromise": zod.string().nullish(),
   "role": zod.string().optional(),
   "createdAt": zod.string()
 })

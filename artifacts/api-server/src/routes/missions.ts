@@ -5,6 +5,7 @@ import { requireAuthWithUser } from "../lib/auth";
 import { generateDailyMissions } from "../lib/ai";
 import { getActionImpact, clampScore, calcOverallScore } from "../lib/scores";
 import { localDateStr, localYesterdayStr } from "../lib/dateUtils";
+import { computePromiseStreak } from "../lib/promiseStreak";
 
 const router = Router();
 
@@ -172,18 +173,37 @@ router.post("/complete", requireAuthWithUser, async (req, res) => {
     }
   }
 
-  // 5. Protect the streak — use the user's local timezone so midnight actions
-  //    are credited to the correct local day, not the UTC day.
+  // 5. Protect the streak + update promise streak — use the user's local timezone
+  //    so midnight actions are credited to the correct local day, not the UTC day.
   const localToday = localDateStr(user.timezone);
-  if (user.lastActiveDate !== localToday) {
-    const yesterdayStr = localYesterdayStr(user.timezone);
-    const newStreak = user.lastActiveDate === yesterdayStr ? user.streakDays + 1 : 1;
-    await db.update(usersTable).set({
-      streakDays: newStreak,
-      lastActiveDate: localToday,
-      updatedAt: new Date(),
-    }).where(eq(usersTable.id, user.id));
-  }
+  const yesterdayStr = localYesterdayStr(user.timezone);
+
+  // Action streak update
+  const newStreak = user.lastActiveDate !== localToday
+    ? (user.lastActiveDate === yesterdayStr ? user.streakDays + 1 : 1)
+    : user.streakDays;
+
+  // Promise streak — only credit when there was an outstanding tomorrowPromise.
+  // computePromiseStreak also enforces idempotency (same day = no double-credit).
+  const { credit: promiseKeptToday, newPromiseStreak } = computePromiseStreak({
+    tomorrowPromise: user.tomorrowPromise,
+    lastPromiseDate: (user as any).lastPromiseDate as string | null,
+    promiseStreak: (user as any).promiseStreak ?? 0,
+    localToday,
+    localYesterday: yesterdayStr,
+  });
+
+  await db.update(usersTable).set({
+    ...(user.lastActiveDate !== localToday && { streakDays: newStreak, lastActiveDate: localToday }),
+    // Clear tomorrowPromise atomically so the same commitment cannot qualify
+    // another day. Write lastPromiseDate only when actually crediting.
+    ...(promiseKeptToday && {
+      promiseStreak: newPromiseStreak,
+      lastPromiseDate: localToday,
+      tomorrowPromise: null,
+    }),
+    updatedAt: new Date(),
+  }).where(eq(usersTable.id, user.id));
 
   // 6. Check chapter unlocks
   const [totalActions] = await db

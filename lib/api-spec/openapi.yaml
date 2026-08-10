@@ -579,6 +579,15 @@ components:
           type: integer
         streakDays:
           type: integer
+        promiseStreak:
+          type: integer
+          description: Consecutive days a promise was kept
+        lastPromiseDate:
+          type: ["string", "null"]
+          description: Local date string (YYYY-MM-DD) of the last kept promise
+        tomorrowPromise:
+          type: ["string", "null"]
+          description: The promise the user made for tomorrow
         role:
           type: string
         createdAt:

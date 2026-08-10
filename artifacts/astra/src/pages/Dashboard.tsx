@@ -406,14 +406,12 @@ function CommandStatsBar({
   alignScore,
   identityScore,
   streakDays,
-  promiseKept,
-  promiseLoading,
+  promiseStreak,
 }: {
   alignScore: number;
   identityScore: number;
   streakDays: number;
-  promiseKept: boolean;
-  promiseLoading: boolean;
+  promiseStreak: number;
 }) {
   const tiles = [
     {
@@ -444,13 +442,13 @@ function CommandStatsBar({
       sub: streakDays === 1 ? "day" : "days",
     },
     {
-      label: "Today's Promise",
-      value: promiseLoading ? "…" : promiseKept ? "Kept" : "Pending",
-      icon: promiseKept ? CheckCircle2 : Sparkles,
-      color: promiseKept ? "text-emerald-400" : "text-violet-400",
-      bg: promiseKept ? "bg-emerald-500/10" : "bg-violet-500/10",
-      border: promiseKept ? "border-emerald-500/20" : "border-violet-500/20",
-      sub: promiseKept ? "Identity strengthened" : "Not yet kept",
+      label: "Promise Streak",
+      value: `${promiseStreak}d`,
+      icon: Sparkles,
+      color: "text-violet-400",
+      bg: "bg-violet-500/10",
+      border: "border-violet-500/20",
+      sub: promiseStreak === 0 ? "Keep your promise" : promiseStreak === 1 ? "kept in a row" : "kept in a row",
     },
   ];
 
@@ -2527,13 +2525,12 @@ export default function Dashboard() {
           weeklyActionCount={weeklyActionCount}
         />
 
-        {/* Command Stats Bar — Future Alignment, Identity Score, Streak, Today's Promise */}
+        {/* Command Stats Bar — Future Alignment, Identity Score, Streak, Promise Streak */}
         <CommandStatsBar
           alignScore={alignScore}
           identityScore={Math.round(identityScore)}
           streakDays={streakDays}
-          promiseKept={promiseCompleted}
-          promiseLoading={missionsLoading}
+          promiseStreak={user?.promiseStreak ?? 0}
         />
 
         {/* Today's Promise — the single daily commitment */}

@@ -39,6 +39,12 @@ export interface User {
   dailyHabits?: string | null;
   currentChapter?: number;
   streakDays?: number;
+  /** Consecutive days a promise was kept */
+  promiseStreak?: number;
+  /** Local date string (YYYY-MM-DD) of the last kept promise @nullable */
+  lastPromiseDate?: string | null;
+  /** @nullable */
+  tomorrowPromise?: string | null;
   role?: string;
   createdAt: string;
 }

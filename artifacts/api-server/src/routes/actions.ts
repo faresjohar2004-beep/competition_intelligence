@@ -4,6 +4,7 @@ import { eq, sql, count, sum } from "drizzle-orm";
 import { requireAuthWithUser } from "../lib/auth";
 import { getActionImpact, clampScore, calcOverallScore, type ActionType } from "../lib/scores";
 import { localDateStr, localYesterdayStr, pgTimezone } from "../lib/dateUtils";
+import { computePromiseStreak } from "../lib/promiseStreak";
 
 const router = Router();
 
@@ -100,12 +101,38 @@ router.post("/", requireAuthWithUser, async (req, res) => {
   // Update streak — use the user's local timezone so midnight actions are
   // credited to the correct local day, not the UTC day.
   const todayStr = localDateStr(user.timezone);
-  if (user.lastActiveDate !== todayStr) {
-    const yesterdayStr = localYesterdayStr(user.timezone);
-    const newStreak = user.lastActiveDate === yesterdayStr ? user.streakDays + 1 : 1;
-    await db.update(usersTable).set({ streakDays: newStreak, lastActiveDate: todayStr, updatedAt: new Date() })
-      .where(eq(usersTable.id, user.id));
-  }
+  const yesterdayStrForAction = localYesterdayStr(user.timezone);
+  const isFirstActionToday = user.lastActiveDate !== todayStr;
+
+  // Promise streak: first action of the day while tomorrowPromise is set
+  // = the user kept their "tomorrow's promise".
+  // computePromiseStreak enforces the outstanding-promise guard and idempotency.
+  // Only credit on the first action of the day (isFirstActionToday) to avoid
+  // double-counting if the user logs multiple actions.
+  const { credit: isPromiseKept, newPromiseStreak } = isFirstActionToday
+    ? computePromiseStreak({
+        tomorrowPromise: user.tomorrowPromise,
+        lastPromiseDate: (user as any).lastPromiseDate as string | null,
+        promiseStreak: (user as any).promiseStreak ?? 0,
+        localToday: todayStr,
+        localYesterday: yesterdayStrForAction,
+      })
+    : { credit: false, newPromiseStreak: (user as any).promiseStreak ?? 0 };
+
+  // Clear tomorrowPromise atomically when crediting the promise streak so the
+  // same commitment cannot qualify a future day.
+  await db.update(usersTable).set({
+    ...(isFirstActionToday && {
+      streakDays: user.lastActiveDate === yesterdayStrForAction ? user.streakDays + 1 : 1,
+      lastActiveDate: todayStr,
+    }),
+    ...(isPromiseKept && {
+      promiseStreak: newPromiseStreak,
+      lastPromiseDate: todayStr,
+      tomorrowPromise: null,
+    }),
+    updatedAt: new Date(),
+  }).where(eq(usersTable.id, user.id));
 
   // Check chapter unlock
   const [totalActions] = await db.select({ count: count() }).from(actionsTable).where(eq(actionsTable.userId, user.id));

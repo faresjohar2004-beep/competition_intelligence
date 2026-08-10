@@ -27,6 +27,8 @@ export const usersTable = pgTable("users", {
   stripeSubscriptionId: text("stripe_subscription_id"),
   isPro: boolean("is_pro").notNull().default(false),
   tomorrowPromise: text("tomorrow_promise"),
+  promiseStreak: integer("promise_streak").notNull().default(0),
+  lastPromiseDate: text("last_promise_date"),
   currentIdentity: text("current_identity"),
   desiredIdentity: text("desired_identity"),
   timezone: text("timezone"),

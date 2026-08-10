@@ -97,10 +97,21 @@ export default function DashboardScreen() {
 
   const firstName = me?.name?.split(' ')[0] ?? 'Explorer';
   const streak = stats?.streakDays ?? me?.streakDays ?? 0;
+  const promiseStreak = me?.promiseStreak ?? 0;
   const actionsToday = todayData?.actions?.length ?? 0;
   const todayList = todayData?.actions ?? [];
   const promiseKept = todayList.some(a => (a.type as string) === 'promise');
-  const tomorrowPromise = (me as any)?.tomorrowPromise as string | null | undefined;
+  const tomorrowPromise = me?.tomorrowPromise;
+
+  const PROMISE_MILESTONES = [3, 7, 14, 30, 60, 90];
+  const isPromiseMilestone = actionsToday > 0 && PROMISE_MILESTONES.includes(promiseStreak);
+  const promiseStreakMilestoneLabel =
+    promiseStreak >= 90 ? '90-day promise legend' :
+    promiseStreak >= 60 ? '60-day promise keeper' :
+    promiseStreak >= 30 ? '30-day promise keeper' :
+    promiseStreak >= 14 ? '14-day promise keeper' :
+    promiseStreak >= 7  ? '7-day promise keeper' :
+    '3-day promise keeper';
 
   const streakInfo = getStreakWord(streak);
 
@@ -151,13 +162,30 @@ export default function DashboardScreen() {
           colors={colors}
         />
         <StatCard
-          label="Promise"
-          value={promiseKept ? 'Kept' : 'Pending'}
-          icon={promiseKept ? 'checkmark-circle' : 'time'}
-          color={promiseKept ? '#10B981' : '#8B5CF6'}
+          label="Promises"
+          value={`${promiseStreak}d`}
+          icon="star"
+          color="#8B5CF6"
           colors={colors}
         />
       </Animated.View>
+
+      {/* Promise streak milestone celebration */}
+      {isPromiseMilestone && (
+        <Animated.View entering={FadeInDown.duration(500).delay(100)} style={styles.milestoneBanner}>
+          <View style={styles.milestoneOrb} />
+          <View style={styles.milestoneRow2}>
+            <Ionicons name="star" size={14} color="#8B5CF6" style={{ marginRight: 6 }} />
+            <Text style={styles.milestoneTag}>Promise Milestone</Text>
+          </View>
+          <Text style={styles.milestoneHeadline}>
+            {promiseStreak} promises kept in a row.
+          </Text>
+          <Text style={styles.milestoneBody}>
+            You are someone who follows through. The {promiseStreakMilestoneLabel} isn't just a number — it's proof of your character.
+          </Text>
+        </Animated.View>
+      )}
 
       {/* Yesterday's promise — accountability hook (pending) or kept confirmation */}
       {!!tomorrowPromise && (
@@ -522,6 +550,52 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     milestoneLabel: {
       fontSize: 11,
       color: colors.mutedForeground,
+      fontFamily: 'Inter_400Regular',
+    },
+    milestoneBanner: {
+      backgroundColor: '#8B5CF608',
+      borderRadius: colors.radius,
+      borderWidth: 1,
+      borderColor: '#8B5CF630',
+      padding: 20,
+      marginBottom: 20,
+      overflow: 'hidden',
+    },
+    milestoneOrb: {
+      position: 'absolute',
+      top: -30,
+      right: -30,
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: '#8B5CF6',
+      opacity: 0.06,
+    },
+    milestoneRow2: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    milestoneTag: {
+      fontSize: 10,
+      fontWeight: '700' as const,
+      color: '#8B5CF6',
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
+      fontFamily: 'Inter_700Bold',
+    },
+    milestoneHeadline: {
+      fontSize: 17,
+      fontWeight: '800' as const,
+      color: colors.foreground,
+      lineHeight: 24,
+      marginBottom: 8,
+      fontFamily: 'Inter_700Bold',
+    },
+    milestoneBody: {
+      fontSize: 13,
+      color: colors.mutedForeground,
+      lineHeight: 20,
       fontFamily: 'Inter_400Regular',
     },
     sectionHeader: {
