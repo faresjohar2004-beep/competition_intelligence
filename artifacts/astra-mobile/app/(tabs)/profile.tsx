@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { useGetMe, useGetUserStats, useUpdateMe, getGetMeQueryKey, getGetUserStatsQueryKey, useGetFutureSelf, useGetBiography, useGenerateBiographyEntry, getGetBiographyQueryKey } from '@workspace/api-client-react';
+import { useGetMe, useGetUserStats, useUpdateMe, getGetMeQueryKey, getGetUserStatsQueryKey, useGetFutureSelf, useGetBiography, useGenerateBiographyEntry, getGetBiographyQueryKey, useGetLatestLetter, useGenerateLetter, getGetLatestLetterQueryKey, getGetLettersQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 
 // ── Biography helpers ───────────────────────────────────────────────
@@ -258,7 +258,12 @@ export default function ProfileScreen() {
   const { data: stats } = useGetUserStats();
   const { data: futureSelfList } = useGetFutureSelf();
   const { data: biographyEntries } = useGetBiography();
+  // retry:false so a 404 ("no letter yet") resolves immediately instead of retrying 3x
+  const { data: latestLetter, isLoading: letterLoading, isError: noLetter } = useGetLatestLetter(
+    { query: { retry: false } } as any,
+  );
   const generateEntry = useGenerateBiographyEntry();
+  const generateLetterMutation = useGenerateLetter();
   const { mutateAsync: updateMe } = useUpdateMe();
 
   const [editVisible, setEditVisible] = useState(false);
@@ -398,6 +403,17 @@ export default function ProfileScreen() {
     });
   };
 
+  const handleGenerateLetter = () => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    generateLetterMutation.mutate(undefined, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetLatestLetterQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetLettersQueryKey() });
+        if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      },
+    });
+  };
+
   const SCORE_DIMS = [
     { key: 'healthScore',     label: 'Health',     color: '#10B981', icon: 'fitness-outline' },
     { key: 'wealthScore',     label: 'Wealth',     color: '#F59E0B', icon: 'wallet-outline' },
@@ -476,6 +492,88 @@ export default function ProfileScreen() {
             </View>
           </Animated.View>
         )}
+
+        {/* Identity Letter */}
+        <Animated.View entering={FadeInDown.duration(400).delay(160)} style={styles.section}>
+          <Text style={styles.sectionLabel}>Identity Letter</Text>
+
+          {letterLoading ? (
+            <View style={[styles.card, { padding: 24, alignItems: 'center' }]}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : noLetter || !latestLetter ? (
+            /* Empty state — no letter yet */
+            <TouchableOpacity
+              style={[styles.letterEmptyCard]}
+              onPress={handleGenerateLetter}
+              disabled={generateLetterMutation.isPending}
+              activeOpacity={0.82}
+            >
+              {generateLetterMutation.isPending ? (
+                <>
+                  <ActivityIndicator color={colors.primary} />
+                  <Text style={[styles.letterEmptySubtext, { marginTop: 8 }]}>Writing your letter…</Text>
+                </>
+              ) : (
+                <>
+                  <View style={styles.letterEmptyIconWrap}>
+                    <Ionicons name="mail-outline" size={24} color={colors.primary} />
+                  </View>
+                  <Text style={styles.letterEmptyTitle}>A letter from your future self</Text>
+                  <Text style={styles.letterEmptySubtext}>
+                    See who you're becoming. Generated from your real scores and streak — not a template.
+                  </Text>
+                  <View style={styles.letterGenerateBtn}>
+                    <Text style={styles.letterGenerateBtnText}>Write My Letter</Text>
+                  </View>
+                </>
+              )}
+            </TouchableOpacity>
+          ) : (
+            /* Letter exists */
+            <View style={[styles.card, { overflow: 'hidden' }]}>
+              {/* Header bar */}
+              <View style={styles.letterHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                  <Ionicons name="mail" size={13} color={colors.primary} />
+                  <Text style={styles.letterFromLabel}>FROM YOUR FUTURE SELF</Text>
+                </View>
+                {latestLetter.emotionalTone ? (
+                  <View style={styles.letterToneBadge}>
+                    <Text style={styles.letterToneText}>{latestLetter.emotionalTone}</Text>
+                  </View>
+                ) : null}
+              </View>
+
+              {/* Letter body */}
+              <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 }}>
+                <Text style={styles.letterContent}>{latestLetter.content}</Text>
+              </View>
+
+              {/* Footer */}
+              <View style={styles.letterFooter}>
+                <Text style={styles.letterDate}>
+                  {new Date(latestLetter.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </Text>
+                <TouchableOpacity
+                  onPress={handleGenerateLetter}
+                  disabled={generateLetterMutation.isPending}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                  activeOpacity={0.7}
+                >
+                  {generateLetterMutation.isPending
+                    ? <ActivityIndicator size="small" color={colors.primary} />
+                    : (
+                      <>
+                        <Ionicons name="refresh-outline" size={12} color={colors.primary} />
+                        <Text style={styles.letterRegenerateText}>Regenerate</Text>
+                      </>
+                    )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </Animated.View>
 
         {/* Your Story — biography timeline */}
         <Animated.View entering={FadeInDown.duration(400).delay(165)} style={styles.section}>
@@ -835,6 +933,114 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       color: colors.mutedForeground,
       fontFamily: 'Inter_400Regular',
       textAlign: 'center' as const,
+    },
+    // ── Identity Letter styles ─────────────────────────────────────────
+    letterEmptyCard: {
+      backgroundColor: colors.card,
+      borderRadius: colors.radius,
+      borderWidth: 1,
+      borderColor: `${colors.primary}30`,
+      borderStyle: 'dashed' as const,
+      padding: 28,
+      alignItems: 'center' as const,
+      gap: 10,
+    },
+    letterEmptyIconWrap: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: `${colors.primary}15`,
+      borderWidth: 1,
+      borderColor: `${colors.primary}25`,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      marginBottom: 4,
+    },
+    letterEmptyTitle: {
+      fontSize: 15,
+      fontWeight: '700' as const,
+      color: colors.foreground,
+      fontFamily: 'Inter_700Bold',
+      textAlign: 'center' as const,
+    },
+    letterEmptySubtext: {
+      fontSize: 12,
+      color: colors.mutedForeground,
+      fontFamily: 'Inter_400Regular',
+      textAlign: 'center' as const,
+      lineHeight: 18,
+      paddingHorizontal: 8,
+    },
+    letterGenerateBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: 10,
+      paddingHorizontal: 22,
+      paddingVertical: 11,
+      marginTop: 6,
+    },
+    letterGenerateBtnText: {
+      fontSize: 13,
+      fontWeight: '700' as const,
+      color: '#FFFFFF',
+      fontFamily: 'Inter_700Bold',
+    },
+    letterHeader: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'space-between' as const,
+      padding: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      backgroundColor: `${colors.primary}08`,
+    },
+    letterFromLabel: {
+      fontSize: 10,
+      fontWeight: '700' as const,
+      color: colors.primary,
+      fontFamily: 'Inter_700Bold',
+      letterSpacing: 0.8,
+    },
+    letterToneBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      backgroundColor: `${colors.primary}15`,
+      borderRadius: 99,
+      borderWidth: 1,
+      borderColor: `${colors.primary}30`,
+    },
+    letterToneText: {
+      fontSize: 10,
+      fontWeight: '600' as const,
+      color: colors.primary,
+      fontFamily: 'Inter_600SemiBold',
+    },
+    letterContent: {
+      fontSize: 14,
+      color: colors.foreground,
+      fontFamily: 'Inter_400Regular',
+      lineHeight: 23,
+      opacity: 0.9,
+    },
+    letterFooter: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'space-between' as const,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      marginTop: 12,
+    },
+    letterDate: {
+      fontSize: 11,
+      color: colors.mutedForeground,
+      fontFamily: 'Inter_400Regular',
+    },
+    letterRegenerateText: {
+      fontSize: 11,
+      fontWeight: '600' as const,
+      color: colors.primary,
+      fontFamily: 'Inter_600SemiBold',
     },
   });
 }
