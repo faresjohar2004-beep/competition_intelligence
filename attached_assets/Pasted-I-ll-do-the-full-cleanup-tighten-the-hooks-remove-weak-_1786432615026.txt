@@ -1,0 +1,262 @@
+I’ll do the full cleanup: **tighten the hooks, remove weak/repetitive wording, make the scripts sound human, fix questionable claims, improve the CTAs, and keep them ready for HeyGen.**
+
+## 1. Protein on Rest Days — Nutrition Coach
+
+**Hook:** Protein still matters on your rest days.
+
+**Script:**
+Your muscles don’t stop recovering just because you’re not training today. Protein supports muscle repair and helps maintain lean mass throughout the week. Instead of cutting protein on rest days, keep your intake consistent and let recovery do its job.
+
+**CTA:** Keep your nutrition consistent, even when training stops.
+
+**Caption:** Rest day doesn’t mean recovery stops. Keep giving your body what it needs.
+
+**On-Screen Text:**
+Protein on rest days?
+Yes.
+Recovery is still happening.
+
+**Hashtags:** `#Protein #MuscleRecovery #NutritionTips #RestDay #StayInSync`
+
+**Promotion:** No
+**Avatar:** Open Body Language Coach
+
+---
+
+## 2. Meal Timing for Fat Loss — Nutrition Coach
+
+**Hook:** Meal timing probably isn’t what’s stopping your fat loss.
+
+**Script:**
+You don’t need a perfect eating schedule to lose fat. Your overall calorie intake, food quality, and consistency matter far more than whether you eat at 8 AM or 10 AM. Build a meal schedule you can actually maintain.
+
+**CTA:** Focus on the habits you can repeat.
+
+**Caption:** Stop obsessing over the clock. Build a nutrition approach you can consistently follow.
+
+**On-Screen Text:**
+Meal timing ≠ the main factor
+Calories
+Consistency
+Sustainability
+
+**Hashtags:** `#FatLoss #MealTiming #NutritionScience #CalorieDeficit #StayInSync`
+
+**Promotion:** No
+**Avatar:** Open Body Language Coach
+
+---
+
+## 3. Meal Timing for Muscle Growth — Nutrition Coach
+
+**Hook:** Does meal timing really build more muscle?
+
+**Script:**
+Timing matters, but not nearly as much as your total daily protein and calories. Instead of obsessing over a tiny anabolic window, spread quality protein across your day and make sure you’re actually eating enough to support growth.
+
+**CTA:** Get the fundamentals right before chasing perfect timing.
+
+**Caption:** Nutrient timing can help, but the basics still win.
+
+**On-Screen Text:**
+Muscle growth priorities:
+Enough calories
+Enough protein
+Consistent training
+Then optimize timing
+
+**Hashtags:** `#MuscleGrowth #Protein #NutritionTips #Hypertrophy #StayInSync`
+
+**Promotion:** No
+**Avatar:** Open Body Language Coach
+
+---
+
+## 4. Rest Between Training the Same Muscle — Fitness Coach
+
+**Hook:** How long should you wait before training the same muscle again?
+
+**Script:**
+You don’t automatically need 72 hours every time. Recovery depends on how hard you trained, how much volume you did, your sleep, nutrition, and training experience. A practical starting point is giving a muscle around 48 hours before training it hard again, then adjust based on performance and recovery.
+
+**CTA:** Let your performance tell you whether you’re recovered.
+
+**Caption:** Recovery isn’t a fixed timer. Training stress and readiness matter.
+
+**On-Screen Text:**
+Same muscle again?
+Start around 48 hours
+Then adjust to recovery
+
+**Hashtags:** `#MuscleRecovery #TrainingFrequency #Hypertrophy #FitnessTips #StayInSync`
+
+**Promotion:** No
+**Avatar:** Sonrisa Radiante
+
+---
+
+## 5. Hydration Needs — Nutrition Coach
+
+**Hook:** There isn’t one perfect amount of water for everyone.
+
+**Script:**
+Your hydration needs change with your body size, activity, climate, and how much you sweat. Start with consistent fluid intake throughout the day, then pay attention to thirst, urine color, training demands, and sweat loss. Hydration should adapt to you.
+
+**CTA:** Track the patterns instead of guessing.
+
+**Caption:** Your hydration needs change with your training and environment.
+
+**On-Screen Text:**
+Hydration isn’t one-size-fits-all
+Activity
+Heat
+Sweat
+Lifestyle
+
+**Hashtags:** `#Hydration #SportsNutrition #FitnessPerformance #NutritionTips #VitalSync`
+
+**Promotion:** Yes — natural mention
+**Avatar:** Open Body Language Coach
+
+---
+
+## 6. Carbs Before Training — Nutrition Coach
+
+**Hook:** When should you eat carbs before a workout?
+
+**Script:**
+If you want quick energy close to training, easily digested carbs can work well around 30 to 60 minutes beforehand. If you’re eating a larger meal, give yourself more time to digest it. The goal isn’t a magic window—it’s arriving at training fueled without feeling heavy.
+
+**CTA:** Find the timing that lets you train your best.
+
+**Caption:** Pre-workout nutrition should improve performance, not make training uncomfortable.
+
+**On-Screen Text:**
+Carbs before training
+Quick snack: closer
+Larger meal: earlier
+Train fueled
+
+**Hashtags:** `#PreWorkoutNutrition #Carbs #WorkoutFuel #SportsNutrition #StayInSync`
+
+**Promotion:** No
+**Avatar:** Open Body Language Coach
+
+---
+
+## 7. Mobility Before Training — Fitness Coach
+
+**Hook:** Your warm-up shouldn’t feel like another workout.
+
+**Script:**
+Before training, use mobility work that prepares you for the movements you’re about to perform. A few dynamic drills, some controlled range of motion, and lighter versions of your main exercise are usually more useful than randomly stretching everything.
+
+**CTA:** Warm up for the workout you’re actually doing.
+
+**Caption:** A good warm-up prepares movement. It shouldn’t drain your energy.
+
+**On-Screen Text:**
+Better warm-up:
+Dynamic movement
+Specific mobility
+Lighter practice sets
+
+**Hashtags:** `#WarmUp #Mobility #TrainingTips #GymPerformance #StayInSync`
+
+**Promotion:** No
+**Avatar:** Sonrisa Radiante
+
+---
+
+## 8. Why Rest Days Matter — Fitness Coach
+
+**Hook:** Rest days aren’t lost training days.
+
+**Script:**
+Training creates the stimulus. Recovery is where your body adapts to it. If fatigue keeps building faster than you can recover, your performance eventually suffers. Rest days are part of the program—not something you earn after destroying yourself.
+
+**CTA:** Train hard enough to need recovery, and recover well enough to train again.
+
+**Caption:** Progress requires stress and recovery. You need both.
+
+**On-Screen Text:**
+Training = stimulus
+Recovery = adaptation
+You need both.
+
+**Hashtags:** `#RestDay #Recovery #TrainingTips #Performance #StayInSync`
+
+**Promotion:** Yes — subtle Vital Sync integration
+**Avatar:** Sonrisa Radiante
+
+---
+
+## 9. Replace the “20-Second Form Intervals” Script
+
+I would **delete the original one**. The “20-second intervals improve exercise form” idea feels invented and has no clear reason behind the number.
+
+Use this instead:
+
+**Hook:** If your form breaks down, the weight is probably too heavy.
+
+**Script:**
+If every rep looks different, stop chasing the number on the bar. Reduce the load and make your reps repeatable. Good technique lets you train the target muscles consistently and gives you something reliable to progress from.
+
+**CTA:** Own the rep before you add the weight.
+
+**Caption:** Better technique creates a better foundation for progression.
+
+**On-Screen Text:**
+Form breaking down?
+Lower the load
+Own the rep
+Then progress
+
+**Hashtags:** `#ExerciseForm #GymTips #StrengthTraining #TrainSmart #StayInSync`
+
+**Promotion:** No
+**Avatar:** Sonrisa Radiante
+
+---
+
+## 10. Meal Timing and Weight Loss — Nutrition Coach
+
+**Hook:** Eating at the “wrong time” probably isn’t why you’re not losing weight.
+
+**Script:**
+Meal timing can affect hunger, energy, and how easy your diet feels, but fat loss still comes down primarily to maintaining an appropriate calorie deficit over time. Choose meal times that help you control hunger and stay consistent.
+
+**CTA:** Build your eating schedule around adherence, not internet rules.
+
+**Caption:** The best meal schedule is the one that helps you consistently manage your intake.
+
+**On-Screen Text:**
+Weight loss + meal timing
+Timing affects hunger
+Calories drive fat loss
+Consistency wins
+
+**Hashtags:** `#WeightLoss #MealTiming #NutritionScience #FatLossTips #VitalSync`
+
+**Promotion:** Yes — natural mention
+**Avatar:** Open Body Language Coach
+
+---
+
+### What I changed
+
+The original batch had a few problems: **too much “Stay in Sync” repetition, generic AI-style hooks like “unlock” and “harness the power,” unnecessary product mentions, and a few claims that were too absolute.**
+
+The biggest fixes were:
+
+**#3:** Meal timing was being overstated as potentially “the key” to muscle growth. It isn't.
+
+**#4:** “48–72 hours” was presented like a universal rule. Recovery is more individual than that.
+
+**#6:** “30–60 minutes” was presented as the carb timing rule. That's appropriate for certain lighter/easier-to-digest foods, but larger meals generally need more time.
+
+**#7:** “Skipping mobility increases injury risk” was too strong.
+
+**#9:** The 20-second form method was weak enough that I replaced the entire topic.
+
+This version is **much closer to what I would actually put through Workflow 2 and then send to HeyGen.**
