@@ -5,13 +5,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
-import { useGetMe, useGetUserStats, useGetTodayActions, useGetFutureSelf, useUpdateMe, getGetMeQueryKey, useGetActions } from '@workspace/api-client-react';
+import { useGetMe, useGetUserStats, useGetTodayActions, useGetFutureSelf, useUpdateMe, getGetMeQueryKey, useGetActions, useGetLatestLetter } from '@workspace/api-client-react';
 import { PROMISE_SUGGESTIONS, DEFAULT_SUGGESTIONS, getDominantActionType } from '@/utils/promiseSuggestions';
 import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useRouter } from 'expo-router';
 
 const ACTION_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   workout:          { label: 'Workout',          color: '#10B981', icon: 'barbell' },
@@ -55,6 +56,7 @@ export default function DashboardScreen() {
   const [editPromiseText, setEditPromiseText] = useState('');
 
   useNotifications();
+  const router = useRouter();
 
   const { data: me, isLoading: meLoading, refetch: refetchMe } = useGetMe();
   const { data: stats, refetch: refetchStats } = useGetUserStats();
@@ -62,6 +64,8 @@ export default function DashboardScreen() {
   const { data: futureSelf } = useGetFutureSelf();
   // Fetch recent action history to personalize tomorrow's promise suggestions
   const { data: recentActions } = useGetActions({ limit: 30 });
+  // Identity letter — retry:false so 404 ("no letter yet") resolves immediately
+  const { data: latestLetter } = useGetLatestLetter({ query: { retry: false } } as any);
   const updateMe = useUpdateMe();
 
   const currentScores = futureSelf?.find(f => f.timeframe === 'current');
@@ -401,6 +405,53 @@ export default function DashboardScreen() {
             <Text style={styles.sealedLabel}>Tomorrow's Promise</Text>
             <Text style={styles.sealedText} numberOfLines={2}>"{promise}"</Text>
           </View>
+        </Animated.View>
+      )}
+
+      {/* Identity bridge — loop is complete, invite user to see who they're becoming */}
+      {actionsToday > 0 && !!tomorrowPromise && (
+        <Animated.View entering={FadeInDown.duration(400).delay(190)} style={styles.identityBridge}>
+          <View style={styles.identityBridgeOrb} />
+          <View style={styles.identityBridgeTop}>
+            <Ionicons name="mail" size={12} color={colors.primary} />
+            <Text style={styles.identityBridgeEyebrow}>From your future self</Text>
+          </View>
+
+          {latestLetter?.content ? (
+            <>
+              <Text style={styles.identityBridgeExcerpt} numberOfLines={3}>
+                {latestLetter.content}
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.navigate('/(tabs)/profile');
+                }}
+                style={styles.identityBridgeLink}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.identityBridgeLinkText}>Read your full letter</Text>
+                <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity
+              onPress={() => {
+                if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.navigate('/(tabs)/profile');
+              }}
+              activeOpacity={0.7}
+              style={{ gap: 8 }}
+            >
+              <Text style={styles.identityBridgeSubtext}>
+                Your identity letter is waiting. See who you're becoming based on your real scores and streak.
+              </Text>
+              <View style={styles.identityBridgeLink}>
+                <Text style={styles.identityBridgeLinkText}>See who you're becoming</Text>
+                <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+              </View>
+            </TouchableOpacity>
+          )}
         </Animated.View>
       )}
 
@@ -1003,6 +1054,65 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       fontFamily: 'Inter_500Medium',
       lineHeight: 20,
       fontStyle: 'italic' as const,
+    },
+    // ── Identity bridge ──────────────────────────────────────────────
+    identityBridge: {
+      backgroundColor: colors.card,
+      borderRadius: colors.radius,
+      borderWidth: 1,
+      borderColor: `${colors.primary}25`,
+      padding: 16,
+      marginBottom: 20,
+      overflow: 'hidden' as const,
+    },
+    identityBridgeOrb: {
+      position: 'absolute' as const,
+      top: -40,
+      right: -40,
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: colors.primary,
+      opacity: 0.05,
+    },
+    identityBridgeTop: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: 5,
+      marginBottom: 8,
+    },
+    identityBridgeEyebrow: {
+      fontSize: 10,
+      fontWeight: '700' as const,
+      color: colors.primary,
+      fontFamily: 'Inter_700Bold',
+      letterSpacing: 0.8,
+      textTransform: 'uppercase' as const,
+    },
+    identityBridgeExcerpt: {
+      fontSize: 13,
+      color: colors.foreground,
+      fontFamily: 'Inter_400Regular',
+      lineHeight: 20,
+      opacity: 0.85,
+      marginBottom: 12,
+    },
+    identityBridgeSubtext: {
+      fontSize: 12,
+      color: colors.mutedForeground,
+      fontFamily: 'Inter_400Regular',
+      lineHeight: 18,
+    },
+    identityBridgeLink: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: 4,
+    },
+    identityBridgeLinkText: {
+      fontSize: 12,
+      fontWeight: '600' as const,
+      color: colors.primary,
+      fontFamily: 'Inter_600SemiBold',
     },
   });
 }

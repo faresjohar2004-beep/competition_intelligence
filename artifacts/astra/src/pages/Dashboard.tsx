@@ -1178,7 +1178,7 @@ function TomorrowPreview({
   onDismiss: () => void;
   onSavePromise: (promise: string) => void;
 }) {
-  const [phase, setPhase] = useState<"celebrate" | "commit">("celebrate");
+  const [phase, setPhase] = useState<"celebrate" | "commit" | "done">("celebrate");
   const currentTier = getBriefingTier(streakDays);
   const tomorrowTier = getBriefingTier(streakDays + 1);
   const nextDay = streakDays + 1;
@@ -1320,9 +1320,59 @@ function TomorrowPreview({
 
                 <PromiseInput
                   onSave={onSavePromise}
-                  onSkip={onDismiss}
+                  onSkip={() => setPhase("done")}
                   suggestions={PROMISE_SUGGESTIONS[lastActionType ?? ""] ?? DEFAULT_SUGGESTIONS}
                 />
+              </motion.div>
+            )}
+
+            {/* ── PHASE 3: Day Complete — identity close ── */}
+            {phase === "done" && (
+              <motion.div
+                key="done"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.3 }}
+              >
+                {/* Sealed confirmation */}
+                <div className="flex items-center gap-2 text-emerald-400 mb-5">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span className="text-sm font-bold">Promise sealed. See you tomorrow.</span>
+                </div>
+
+                {/* Identity close — day is complete, point toward growth content */}
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Today's action is permanent evidence. Your scores updated, your story is growing. Take a moment to see how far you've come.
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Link
+                      href="/trajectory"
+                      onClick={onDismiss}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-500/25 bg-emerald-500/8 text-emerald-400 text-xs font-bold hover:bg-emerald-500/15 transition-all group"
+                    >
+                      <TrendingUp className="w-3.5 h-3.5 group-hover:scale-110 transition-transform shrink-0" />
+                      View your trajectory
+                    </Link>
+                    <Link
+                      href="/letters"
+                      onClick={onDismiss}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-primary/20 bg-primary/5 text-primary/70 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all group"
+                    >
+                      <Mail className="w-3.5 h-3.5 group-hover:scale-110 transition-transform shrink-0" />
+                      Read your identity letter
+                    </Link>
+                  </div>
+
+                  <button
+                    onClick={onDismiss}
+                    className="w-full text-center text-[11px] text-white/20 hover:text-white/40 transition-colors pt-1"
+                  >
+                    Close
+                  </button>
+                </div>
               </motion.div>
             )}
 
