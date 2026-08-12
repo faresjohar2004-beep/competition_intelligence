@@ -51,6 +51,8 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [promise, setPromise] = useState('');
   const [promiseSealed, setPromiseSealed] = useState(false);
+  const [editingPromise, setEditingPromise] = useState(false);
+  const [editPromiseText, setEditPromiseText] = useState('');
 
   useNotifications();
 
@@ -194,21 +196,99 @@ export default function DashboardScreen() {
           style={actionsToday > 0 ? styles.yesterdayCardKept : styles.yesterdayCard}
         >
           <View style={actionsToday > 0 ? styles.yesterdayOrbKept : styles.yesterdayOrb} />
-          <View style={styles.yesterdayRow}>
-            <Ionicons
-              name={actionsToday > 0 ? 'checkmark-circle' : 'sparkles'}
-              size={11}
-              color={actionsToday > 0 ? '#10B981' : colors.primary}
-              style={{ marginRight: 5 }}
-            />
-            <Text style={actionsToday > 0 ? styles.yesterdayTagKept : styles.yesterdayTag}>
-              {actionsToday > 0 ? 'Promise Kept' : "Yesterday's Promise"}
-            </Text>
+          <View style={[styles.yesterdayRow, { justifyContent: 'space-between' }]}>
+            <View style={styles.yesterdayRow}>
+              <Ionicons
+                name={actionsToday > 0 ? 'checkmark-circle' : 'sparkles'}
+                size={11}
+                color={actionsToday > 0 ? '#10B981' : colors.primary}
+                style={{ marginRight: 5 }}
+              />
+              <Text style={actionsToday > 0 ? styles.yesterdayTagKept : styles.yesterdayTag}>
+                {actionsToday > 0 ? 'Promise Kept' : "Yesterday's Promise"}
+              </Text>
+            </View>
+            {/* Change plan — only when the user hasn't logged today yet */}
+            {actionsToday === 0 && !editingPromise && (
+              <TouchableOpacity
+                onPress={() => { setEditPromiseText(tomorrowPromise); setEditingPromise(true); }}
+                style={styles.changePlanBtn}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="pencil-outline" size={11} color={`${colors.primary}90`} style={{ marginRight: 4 }} />
+                <Text style={styles.changePlanText}>Change plan</Text>
+              </TouchableOpacity>
+            )}
           </View>
-          <Text style={styles.yesterdayText}>"{tomorrowPromise}"</Text>
-          <Text style={actionsToday > 0 ? styles.yesterdayHookKept : styles.yesterdayHook}>
-            {actionsToday > 0 ? 'You said you would. You did.' : 'You committed to this. Deliver today.'}
-          </Text>
+
+          {editingPromise ? (
+            /* Inline edit mode */
+            <Animated.View entering={FadeIn.duration(200)}>
+              <TextInput
+                style={styles.editPromiseInput}
+                value={editPromiseText}
+                onChangeText={setEditPromiseText}
+                placeholder="What will you do tomorrow?"
+                placeholderTextColor={colors.mutedForeground}
+                maxLength={120}
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  const trimmed = editPromiseText.trim();
+                  if (!trimmed) return;
+                  updateMe.mutate({ data: { tomorrowPromise: trimmed } } as any, {
+                    onSuccess: () => {
+                      queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+                      setEditingPromise(false);
+                      if (Platform.OS !== 'web') {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      }
+                    },
+                  });
+                }}
+              />
+              <View style={styles.editPromiseActions}>
+                <TouchableOpacity
+                  onPress={() => setEditingPromise(false)}
+                  style={styles.editCancelBtn}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.editCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    const trimmed = editPromiseText.trim();
+                    if (!trimmed) return;
+                    updateMe.mutate({ data: { tomorrowPromise: trimmed } } as any, {
+                      onSuccess: () => {
+                        queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+                        setEditingPromise(false);
+                        if (Platform.OS !== 'web') {
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        }
+                      },
+                    });
+                  }}
+                  disabled={!editPromiseText.trim() || updateMe.isPending}
+                  style={[styles.editSaveBtn, { backgroundColor: editPromiseText.trim() ? colors.primary : colors.secondary }, (!editPromiseText.trim() || updateMe.isPending) && { opacity: 0.45 }]}
+                  activeOpacity={0.82}
+                >
+                  {updateMe.isPending
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={styles.editSaveText}>Save</Text>
+                  }
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          ) : (
+            <>
+              <Text style={styles.yesterdayText}>"{tomorrowPromise}"</Text>
+              <Text style={actionsToday > 0 ? styles.yesterdayHookKept : styles.yesterdayHook}>
+                {actionsToday > 0 ? 'You said you would. You did.' : 'You committed to this. Deliver today.'}
+              </Text>
+            </>
+          )}
         </Animated.View>
       )}
 
@@ -755,6 +835,64 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       color: '#10B981AA',
       fontFamily: 'Inter_500Medium',
       fontWeight: '600' as const,
+    },
+    changePlanBtn: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 99,
+      borderWidth: 1,
+      borderColor: `${colors.primary}30`,
+      backgroundColor: `${colors.primary}08`,
+    },
+    changePlanText: {
+      fontSize: 10,
+      color: `${colors.primary}90`,
+      fontFamily: 'Inter_500Medium',
+      fontWeight: '600' as const,
+    },
+    editPromiseInput: {
+      backgroundColor: colors.secondary,
+      borderRadius: colors.radius - 2,
+      borderWidth: 1,
+      borderColor: `${colors.primary}50`,
+      padding: 10,
+      color: colors.foreground,
+      fontSize: 14,
+      fontFamily: 'Inter_400Regular',
+      marginTop: 4,
+      marginBottom: 10,
+    },
+    editPromiseActions: {
+      flexDirection: 'row' as const,
+      gap: 8,
+    },
+    editCancelBtn: {
+      flex: 1,
+      paddingVertical: 10,
+      alignItems: 'center' as const,
+      borderRadius: colors.radius - 2,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.secondary,
+    },
+    editCancelText: {
+      fontSize: 13,
+      color: colors.mutedForeground,
+      fontFamily: 'Inter_500Medium',
+    },
+    editSaveBtn: {
+      flex: 2,
+      paddingVertical: 10,
+      alignItems: 'center' as const,
+      borderRadius: colors.radius - 2,
+    },
+    editSaveText: {
+      fontSize: 13,
+      fontWeight: '700' as const,
+      color: '#FFFFFF',
+      fontFamily: 'Inter_700Bold',
     },
 
     // ── Commit to tomorrow card ──────────────────────────────────────
